@@ -1,0 +1,188 @@
+@import 'vendor/filament/filament/dist/theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.fi-sidebar {
+    @apply bg-white dark:bg-gray-950 !important;
+    @apply w-64;
+}
+
+.fi-sidebar-item-active,
+.fi-sidebar-group-items {
+    row-gap: 1px !important;
+}
+
+.fi-sidebar-nav-groups {
+    row-gap: 0.7rem !important;
+}
+
+canvas {
+    width: 100% !important;
+    height: auto !important;
+}
+
+.fi-tenant-menu-trigger svg {
+    color: transparent !important;
+}
+
+.img-radio {
+    height: 250px !important;
+}
+
+.img-radio img {
+    height: 400px;
+    -o-object-fit: contain !important;
+    object-fit: contain !important;
+    -o-object-position: top;
+    object-position: top;
+    transform-origin: 50% 50%;
+    transition-duration: .1s;
+    transition: all 2s ease;
+    width: 100%;
+}
+
+.img-radio:hover img {
+    -o-object-position: top !important;
+    object-position: top !important;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.fi-sidebar-nav {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.timepicker-toggle {
+    padding: 10px !important;
+}
+
+.marque-container .Marquee-content {
+    animation: marquee 40s linear infinite running;
+}
+
+.marque-container .Marquee-content:hover {
+    animation-play-state: paused;
+}
+
+.choices__list--single{
+    width: 100% !important;
+}
+
+/* .fi-main-ctn header{
+	background-color:transparent !important;
+} */
+
+
+
+@layer base {
+    /* Kapag ang filament modal ay naka-mount sa DOM */
+    body:has(.fi-modal-open) .bottom-navbar {
+        z-index: -1 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+}
+
+@-moz-keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translate(-50%);
+    }
+}
+
+@-webkit-keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translate(-50%);
+    }
+}
+
+@-o-keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translate(-50%);
+    }
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translate(-50%);
+    }
+}
+
+/* aside.fi-sidebar {
+    /* @apply bg-gradient-to-b from-slate-700 to-slate-800 dark:bg-gradient-to-b dark:from-gray-800 dark:to-gray-900; */
+/* } */
+
+@media print {
+    .print\:hidden {
+        display: none !important;
+    }
+
+    .print-calendar {
+        width: 100%;
+    }
+
+    .print-calendar * {
+        font-size: 9px !important;
+        line-height: 1.2;
+    }
+
+    .print-calendar .border {
+        border: 1px solid #ccc;
+    }
+
+    .h-\[140px\] {
+        height: 140px !important;
+    }
+
+    .grid-cols-1,
+    .grid-cols-2,
+    .grid-cols-3 {
+        display: grid !important;
+    }
+
+    /* Force overflow to be visible in print */
+    .overflow-x-auto,
+    .overflow-y-auto,
+    .overflow-hidden {
+        overflow: visible !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+}
+
+/* I-force ang main content area na magkaroon ng sapat na offset */
+@media (max-width: 1024px) {
+    .fi-main-ctn {
+        isolation: isolate;
+    }
+    
+    /* Minsan yung sticky header ng filament page ang salarin */
+    .fi-header {
+        z-index: 10 !important;
+    }
+}
+
