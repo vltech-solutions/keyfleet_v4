@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Booking;
-use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -52,19 +52,36 @@ class Car extends Model
 
     public static function isAvailableAt($carId, $startDateTime, $endDateTime = null, $excludeBookingId = null)
     {
-        $endDateTime = $endDateTime ?? $startDateTime;
-
-        return ! Booking::where('car_id', $carId)
-            ->where('status', 'approved')
+        $start = Carbon::parse($startDateTime);
+        $end = $endDateTime ? Carbon::parse($endDateTime) : $start->copy()->addMinutes(30);
+      
+        $overlapExists = Booking::where('car_id', $carId)
             ->when($excludeBookingId, function ($query) use ($excludeBookingId) {
                 $query->where('id', '!=', $excludeBookingId);
             })
-            ->where(function ($query) use ($startDateTime, $endDateTime) {
-                $query->where('start_datetime', '<=', $endDateTime)
-                    ->where('end_datetime', '>=', $startDateTime);
-            })
+            ->where('start_datetime', '<', $end)
+            ->where('end_datetime', '>', $start)
+            ->where('status', 'approved')
             ->exists();
+        
+        return ! $overlapExists;
     }
+
+    // public static function isAvailableAt($carId, $startDateTime, $endDateTime = null, $excludeBookingId = null)
+    // {
+    //     $endDateTime = $endDateTime ?? $startDateTime;
+
+    //     return ! Booking::where('car_id', $carId)
+    //         ->where('status', 'approved')
+    //         ->when($excludeBookingId, function ($query) use ($excludeBookingId) {
+    //             $query->where('id', '!=', $excludeBookingId);
+    //         })
+    //         ->where(function ($query) use ($startDateTime, $endDateTime) {
+    //             $query->where('start_datetime', '<=', $endDateTime)
+    //                 ->where('end_datetime', '>=', $startDateTime);
+    //         })
+    //         ->exists();
+    // }
 
     public function getBusyDates()
     {

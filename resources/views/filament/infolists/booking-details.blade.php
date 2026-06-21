@@ -31,7 +31,7 @@
             {{-- Decorative Gradient --}}
             <div class="absolute inset-0 bg-gradient-to-br from-primary-600/20 via-transparent to-black/60 pointer-events-none"></div>
             
-            <div class="relative p-6 h-full flex flex-col justify-between z-10">
+            <div class="relative p-6 h-full flex flex-col justify-between ">
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-sm font-bold uppercase  text-primary-400">Assigned Fleet</span>
