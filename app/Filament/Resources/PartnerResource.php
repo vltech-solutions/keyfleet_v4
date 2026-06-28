@@ -12,8 +12,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Grid;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\ActionSize;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
@@ -129,7 +132,6 @@ class PartnerResource extends Resource
                     ->formatStateUsing(fn ($state) =>
                         $state === 'total_due' ? 'Total Due' : 'Rent Only'
                     ),
-
                 // TextColumn::make('contact_number')->label('Contact'),
             ])
             ->filters([
@@ -138,7 +140,92 @@ class PartnerResource extends Resource
             ->actions(
                 // Tables\Actions\EditAction::make()->color('gray'),
                 (auth()->user()->hasActiveSubscription()) ? [
-                    Tables\Actions\EditAction::make()->color('gray'),
+
+                    Tables\Actions\ActionGroup::make(
+                        [
+                            Tables\Actions\EditAction::make()->color('gray'),
+                            Action::make('generate_token')
+                                ->label('Generate Link')
+                                ->icon('heroicon-o-link')
+                                ->action(function ($record) {
+                                    $token = $record->generateAccessToken();
+                                    $link = route('partner.report', $token);
+                                    
+                                    Notification::make()
+                                        ->title('Report link generated!')
+                                        ->body('Share this link with the partner: ' . $link)
+                                        ->success()
+                                        ->send();
+                                }),
+                            
+                            Action::make('copy_link')
+                                ->label('Copy Link')
+                                ->icon('heroicon-o-clipboard')
+                                ->color('success')
+                                ->visible(function ($record) {
+                                    return $record->access_token !== null;
+                                })
+                                ->action(function ($record) {
+                                    $link = route('partner.report', $record->access_token);
+                                    
+                                    Notification::make()
+                                        ->title('Copy this Link for your Partner')
+                                        ->body($link)
+                                        ->success()
+                                        ->send();
+                                })
+                                ->extraAttributes([
+                                    'onclick' => "navigator.clipboard.writeText('" . route('partner.report', 'TOKEN_PLACEHOLDER') . "'.replace('TOKEN_PLACEHOLDER', this.closest('tr').dataset.recordId))",
+                                ]),
+                                
+                            Action::make('regenerate_token')
+                                ->label('Regenerate Link')
+                                ->icon('heroicon-o-arrow-path')
+                                ->color('warning')
+                                ->requiresConfirmation()
+                                ->modalHeading('Regenerate Report Link')
+                                ->modalDescription('This will invalidate the current link and generate a new one. The partner will need to use the new link.')
+                                ->modalSubmitActionLabel('Yes, regenerate')
+                                ->action(function ($record) {
+                                    $token = $record->generateAccessToken();
+                                    $link = route('partner.report', $token);
+                                    
+                                    Notification::make()
+                                        ->title('Link regenerated!')
+                                        ->body('New link: ' . $link)
+                                        ->success()
+                                        ->send();
+                                }),
+                                
+                            Action::make('revoke_token')
+                            ->label('Revoke Access')
+                            ->icon('heroicon-o-x-circle')
+                            ->color('danger')
+                            ->requiresConfirmation()
+                            ->modalHeading('Revoke Access')
+                            ->modalDescription('This will revoke access to the report immediately. The partner will no longer be able to view the report.')
+                            ->modalSubmitActionLabel('Yes, revoke')
+                            ->visible(function ($record) {
+                                return $record->access_token !== null;
+                            })
+                            ->action(function ($record) {
+                                $record->access_token = null;
+                                $record->token_expires_at = null;
+                                $record->save();
+                                
+                                Notification::make()
+                                    ->title('Access revoked!')
+                                    ->body('The partner can no longer access the report.')
+                                    ->success()
+                                    ->send();
+                            }),
+                        
+                    
+                        ]    
+                    )
+                        ->icon('heroicon-o-ellipsis-horizontal-circle')
+                        ->size(ActionSize::ExtraLarge)
+
                     // Tables\Actions\DeleteAction::make()->color('gray'),
                 ] : []
             )

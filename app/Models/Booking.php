@@ -139,6 +139,57 @@ class Booking extends Model
         return $dates;
     }
 
+    /**
+     * Calculate company earnings based on partner commission settings
+     */
+    public function calculateCompanyEarnings(): float
+    {
+        $car = $this->car;
+        $partner = $car?->partner;
+
+        if (!$partner) {
+            return 0;
+        }
+
+        // Use the stored settings if available, otherwise use current partner settings
+        $commissionType = $this->commission_type ?? $partner->commission_type;
+        $commissionValue = $this->commission_value ?? $partner->commission_value;
+        $commissionBase = $this->commission_base ?? $partner->commission_base;
+
+        // Determine the base amount for commission
+        $baseAmount = match ($commissionBase) {
+            'total_due' => $this->total_due ?? 0,
+            default     => $this->total_rent_due ?? 0,
+        };
+
+        // Calculate company commission using stored or current settings
+        if ($commissionType === 'percentage') {
+            $companyCommission = ($commissionValue / 100) * $baseAmount;
+        } else {
+            $companyCommission = $commissionValue;
+        }
+
+        return round($companyCommission, 2);
+    }
+
+    /**
+     * Calculate partner commission (what the partner earns)
+     */
+    public function calculatePartnerCommission(): float
+    {
+        $car = $this->car;
+        $partner = $car?->partner;
+
+        if (!$partner) {
+            return 0;
+        }
+
+        $totalDue = $this->total_due ?? 0;
+        $companyEarnings = $this->calculateCompanyEarnings();
+
+        return round($totalDue - $companyEarnings, 2);
+    }
+
     protected static function booted(): void
     {
         static::saving(function ($booking) {
@@ -171,11 +222,41 @@ class Booking extends Model
                 );
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Calculate commissions
+            |--------------------------------------------------------------------------
+            */
+            // Load car with partner relationship
+            $booking->loadMissing('car.partner');
+            
             if ($booking->car && $booking->car->partner) {
-                $booking->partner_commission = $booking->total_due - $booking->company_earnings;
+                $partner = $booking->car->partner;
+                
+                // Store the commission settings at the time of booking
+                $booking->commission_type = $partner->commission_type;
+                $booking->commission_value = $partner->commission_value;
+                $booking->commission_base = $partner->commission_base;
+                
+                // Calculate and store the actual rate applied
+                if ($partner->commission_type === 'percentage') {
+                    $booking->commission_rate_applied = $partner->commission_value;
+                } else {
+                    // For fixed amounts, store the actual fixed value
+                    $booking->commission_rate_applied = $partner->commission_value;
+                }
+                
+                // Calculate company earnings first
+                $booking->company_earnings = $booking->calculateCompanyEarnings();
+                // Then calculate partner commission
+                $booking->partner_commission = $booking->calculatePartnerCommission();
             } else {
                 $booking->company_earnings = null;
                 $booking->partner_commission = null;
+                $booking->commission_type = null;
+                $booking->commission_value = null;
+                $booking->commission_base = null;
+                $booking->commission_rate_applied = null;
             }
 
            $customerFields = [
