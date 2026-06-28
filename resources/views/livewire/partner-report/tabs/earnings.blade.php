@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <!-- Earnings Summary -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <p class="text-sm text-gray-500 dark:text-gray-400">Total Gross Revenue</p>
             <p class="text-2xl font-bold text-gray-900 dark:text-white">
                 ₱{{ number_format($summaryStats['revenue_in_range'] ?? 0, 2) }}
@@ -11,7 +11,7 @@
             </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <p class="text-sm text-gray-500 dark:text-gray-400">Your Earnings (Net)</p>
             <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 ₱{{ number_format($summaryStats['partner_earnings'] ?? 0, 2) }}
@@ -21,7 +21,7 @@
             </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <p class="text-sm text-gray-500 dark:text-gray-400">Company Commission</p>
             <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 ₱{{ number_format($summaryStats['company_earnings'] ?? 0, 2) }}
@@ -31,7 +31,7 @@
             </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <p class="text-sm text-gray-500 dark:text-gray-400">Outstanding Balance</p>
             <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                 ₱{{ number_format($summaryStats['balance_in_range'] ?? 0, 2) }}
@@ -43,7 +43,7 @@
     </div>
 
     <!-- Commission Breakdown -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Commission Breakdown</h3>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -70,7 +70,7 @@
                             {{ ucfirst(str_replace('_', ' ', $partner->commission_base ?? 'N/A')) }}
                         </span>
                     </div>
-                    <div class="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <div class="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                         <span class="text-sm text-yellow-700 dark:text-yellow-300">
                             <svg class="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -121,25 +121,27 @@
     </div>
 
     <!-- Historical Commission Rates -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Commission Rates Applied Per Booking</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Commission Rates Applied Per Booking</h3>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-gray-700">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Booking ID
                         </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Date
                         </th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Commission Type
                         </th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Rate Applied
                         </th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Base
                         </th>
                     </tr>
@@ -147,13 +149,13 @@
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($bookings as $booking)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                 #{{ $booking->booking_id }}
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {{ $booking->created_at->format('M d, Y') }}
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                     {{ ($booking->commission_type ?? '') === 'percentage' 
                                         ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
@@ -161,7 +163,7 @@
                                     {{ ucfirst($booking->commission_type ?? 'N/A') }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-semibold text-gray-900 dark:text-white">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900 dark:text-white">
                                 @if(isset($booking->commission_type) && $booking->commission_type === 'percentage')
                                     {{ $booking->commission_value ?? 0 }}%
                                 @elseif(isset($booking->commission_type) && $booking->commission_type === 'fixed')
@@ -170,13 +172,13 @@
                                     N/A
                                 @endif
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
                                 {{ ucfirst(str_replace('_', ' ', $booking->commission_base ?? 'N/A')) }}
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                 No bookings found
                             </td>
                         </tr>
@@ -184,13 +186,13 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">
+        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             {{ $bookings->links() }}
         </div>
     </div>
 
     <!-- Commission Calculation Example -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hidden">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">How Partner's Earnings Are Calculated</h3>
         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
             <div class="space-y-2 text-sm">

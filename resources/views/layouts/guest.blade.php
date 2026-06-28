@@ -13,6 +13,7 @@
     
     <!-- Styles -->
     @vite(['resources/css/app.css'])
+    @livewireStyles
     
     @stack('styles')
 </head>
@@ -26,5 +27,29 @@
     @vite(['resources/js/app.js'])
     
     @stack('scripts')
+    <script>
+        document.addEventListener('livewire:initialized', function () {
+            // Listen for dark mode toggle event
+            Livewire.on('darkModeToggled', (event) => {
+                if (event.darkMode) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+                
+            });
+
+            // Check for saved theme preference
+            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    </script>
 </body>
 </html>

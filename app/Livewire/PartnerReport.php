@@ -21,6 +21,8 @@ class PartnerReport extends Component
     public $selectedCar = 'all';
     public $activeTab = 'earnings';
     public $loading = true;
+    
+    public $darkMode = false;
 
     // Custom date range
     public $customStartDate;
@@ -57,7 +59,18 @@ class PartnerReport extends Component
         if (!$this->customEndDate) {
             $this->customEndDate = Carbon::now()->endOfMonth()->format('Y-m-d');
         }
+
+        $this->darkMode = session()->get('dark_mode', false);
         
+    }
+
+    public function toggleDarkMode()
+    {
+        $this->darkMode = !$this->darkMode;
+        session()->put('dark_mode', $this->darkMode);
+        
+        // Dispatch event to update the DOM
+        $this->dispatch('darkModeToggled', darkMode: $this->darkMode);
     }
 
     public function setDateRange($range)
