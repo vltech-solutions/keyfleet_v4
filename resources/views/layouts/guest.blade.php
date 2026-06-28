@@ -22,8 +22,8 @@
     </div>
     
     <!-- Scripts -->
-    @vite(['resources/js/app.js'])
     @livewireScripts
+    @vite(['resources/js/app.js'])
     
     @stack('scripts')
 </body>

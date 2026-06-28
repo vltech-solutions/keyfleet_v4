@@ -8,9 +8,11 @@ use App\Models\Car;
 use Livewire\Component;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Livewire\WithPagination;
 
 class PartnerReport extends Component
 {
+    use WithPagination;
     public $token;
     public $partner;
     public $dateRange = 'this_year';
