@@ -460,7 +460,7 @@
     
     <!-- Pagination -->
     <div class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div class="text-sm text-gray-500 dark:text-gray-400 order-2 sm:order-1">
+        <div class="text-sm text-gray-500 dark:text-gray-400 order-2 sm:order-1" wire:key="pagination-{{ $bookings->currentPage() }}">
             Showing {{ $bookings->firstItem() ?? 0 }} to {{ $bookings->lastItem() ?? 0 }} of {{ $bookings->total() }} bookings
         </div>
         <div class="order-1 sm:order-2 w-full sm:w-auto">
