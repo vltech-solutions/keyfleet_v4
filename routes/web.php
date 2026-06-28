@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Stephenjude\FilamentBlog\Models\Post;
 use App\Http\Controllers\InspectionReportController;
+use App\Livewire\PartnerReport;
 
 $centralDomain = config('app.domain');
 /*
@@ -211,3 +212,12 @@ Route::prefix('test')->group(function () {
 
 Route::get('auth/google', [GoogleController::class, 'redirect'])->name('google.login');
 Route::get('auth/google/callback', [GoogleController::class, 'callback']);
+
+/*
+Partner's Dashboard page
+
+*/
+
+Route::get('/partner/report/{token}', PartnerReport::class)
+    ->name('partner.report')
+    ->middleware('web');
