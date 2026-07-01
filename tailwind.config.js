@@ -13,6 +13,7 @@ export default {
         "./node_modules/flowbite-datepicker/**/*.js",
         './node_modules/select2-tailwindcss-theme/dist/*.css'
     ],
+    darkMode: 'class',
     theme: {
         extend: {
             fontFamily: {

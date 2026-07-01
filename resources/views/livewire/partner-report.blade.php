@@ -1,14 +1,15 @@
 <div>
     @if($loading)
-        <div class="flex items-center justify-center min-h-screen">
+        <div class="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
             <div class="text-center">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p class="mt-4 text-gray-600">Loading your report...</p>
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                <p class="mt-4 text-gray-600 dark:text-gray-400">Loading your report...</p>
             </div>
         </div>
     @else
-        <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <!-- Header -->
+            <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                         <div class="flex items-center space-x-4">
@@ -20,7 +21,7 @@
                                         class="h-16 w-16 object-contain rounded-lg">
                                 </div>
                             @else
-                                <div class="flex-shrink-0 h-16 w-16 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                <div class="flex-shrink-0 h-16 w-16 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                                     <svg class="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                                     </svg>
@@ -41,6 +42,22 @@
                             <span class="text-sm text-gray-500 dark:text-gray-400">
                                 Report as of {{ now()->format('F j, Y g:i A') }}
                             </span>
+                            <!-- Dark Mode Toggle -->
+                            <button wire:click="toggleDarkMode" 
+                                    class="relative inline-flex items-center h-8 rounded-full w-14 transition-colors duration-200 focus:outline-none {{ $darkMode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700' }}">
+                                <span class="sr-only">Toggle Dark Mode</span>
+                                <span class="inline-block w-6 h-6 transform bg-white rounded-full transition-transform duration-200 shadow {{ $darkMode ? 'translate-x-7' : 'translate-x-1' }}">
+                                    @if($darkMode)
+                                        <svg class="w-4 h-4 text-gray-600 absolute top-1 left-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                                        </svg>
+                                    @else
+                                        <svg class="w-4 h-4 text-yellow-500 absolute top-1 left-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                        </svg>
+                                    @endif
+                                </span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -48,7 +65,7 @@
 
             <!-- Filters -->
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
                     <!-- Main Filter Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <!-- Date Range -->
@@ -57,7 +74,7 @@
                                 Date Range
                             </label>
                             <select wire:model.live="dateRange" 
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="today">Today</option>
                                 <option value="this_week">This Week</option>
                                 <option value="this_month">This Month</option>
@@ -74,7 +91,7 @@
                                 Filter by Car
                             </label>
                             <select wire:model.live="selectedCar" 
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="all">All Cars</option>
                                 @foreach($carOptions as $id => $name)
                                     <option value="{{ $id }}">{{ $name }}</option>
@@ -88,7 +105,7 @@
                                 Booking Status
                             </label>
                             <select wire:model.live="bookingStatus" 
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="all">All Status</option>
                                 <option value="approved">Approved</option>
                                 <option value="pending">Pending</option>
@@ -106,9 +123,9 @@
                                 <input type="text" 
                                     wire:model.live.debounce.300ms="searchTerm" 
                                     placeholder="Search bookings..."
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 pl-10">
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 pl-10">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                     </svg>
                                 </div>
@@ -118,7 +135,7 @@
 
                     <!-- Custom Date Range (appears below when selected) -->
                     @if($dateRange === 'custom')
-                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -126,7 +143,7 @@
                                     </label>
                                     <input type="date" 
                                         wire:model="customStartDate" 
-                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -134,15 +151,15 @@
                                     </label>
                                     <input type="date" 
                                         wire:model="customEndDate" 
-                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
                                 <div class="flex space-x-2">
                                     <button wire:click="applyCustomDateRange" 
-                                            class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                            class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
                                         Apply Range
                                     </button>
                                     <button wire:click="resetFilters" 
-                                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors">
+                                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors">
                                         Reset
                                     </button>
                                 </div>
@@ -154,7 +171,7 @@
                     @if($dateRange !== 'custom')
                         <div class="mt-4 flex justify-end">
                             <button wire:click="resetFilters" 
-                                    class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+                                    class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors border border-gray-200 dark:border-gray-700">
                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                 </svg>
@@ -167,27 +184,27 @@
 
             <!-- Tab Navigation -->
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="border-b border-gray-200 dark:border-gray-700">
+                <div class="border-b border-gray-200 dark:border-gray-800">
                     <nav class="-mb-px flex space-x-8">
                         <button wire:click="switchTab('earnings')" 
                                 class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
                                     {{ $activeTab === 'earnings' 
-                                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400' }}">
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
                             Earnings Report
                         </button>
                         <button wire:click="switchTab('cars')" 
                                 class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
                                     {{ $activeTab === 'cars' 
-                                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400' }}">
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
                             Vehicle Performance
                         </button>
                         <button wire:click="switchTab('bookings')" 
                                 class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
                                     {{ $activeTab === 'bookings' 
-                                        ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400' }}">
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }}">
                             Bookings
                         </button>
                     </nav>
@@ -212,10 +229,12 @@
             </div>
 
             <!-- Footer -->
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-gray-200 dark:border-gray-700">
-                <p class="text-center text-xs text-gray-500 dark:text-gray-400">
-                    This report is generated from KeyFleet system. Data is updated in real-time.
-                </p>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-gray-200 dark:border-gray-800">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+                        This report is generated from <span class="font-semibold">KeyFleet</span> system. Data is updated in real-time.
+                    </p>
+                </div>
             </div>
         </div>
     @endif
@@ -227,6 +246,8 @@
     document.addEventListener('livewire:initialized', function () {
         // Initialize charts after Livewire is ready
         Livewire.on('initCharts', function(data) {
+            const isDark = document.documentElement.classList.contains('dark');
+            
             // Monthly Revenue Chart
             const ctx = document.getElementById('monthlyRevenueChart');
             if (ctx) {
@@ -257,6 +278,9 @@
                         plugins: {
                             legend: {
                                 position: 'top',
+                                labels: {
+                                    color: isDark ? '#e5e7eb' : '#374151'
+                                }
                             }
                         },
                         scales: {
@@ -265,7 +289,19 @@
                                 ticks: {
                                     callback: function(value) {
                                         return '₱' + value.toLocaleString();
-                                    }
+                                    },
+                                    color: isDark ? '#9ca3af' : '#6b7280'
+                                },
+                                grid: {
+                                    color: isDark ? '#374151' : '#e5e7eb'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: isDark ? '#9ca3af' : '#6b7280'
+                                },
+                                grid: {
+                                    color: isDark ? '#374151' : '#e5e7eb'
                                 }
                             }
                         }
@@ -279,5 +315,14 @@
             months: @json($monthlyRevenue)
         });
     });
+
+    // Check for saved theme preference
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
 </script>
 @endpush
