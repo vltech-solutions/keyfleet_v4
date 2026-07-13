@@ -5,7 +5,6 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\RequestPasswordReset;
 use App\Filament\Pages\ContractBuilder;
 use Rmsramos\Activitylog\ActivitylogPlugin;
-
 use App\Filament\Pages\CompanyProfile;
 use App\Filament\Pages\ReferralDashboard;
 use App\Filament\Pages\BookingInspectionPage;
@@ -46,6 +45,7 @@ use App\Filament\Widgets\CarAvailability;
 use App\Filament\Widgets\FundTypes;
 use App\Filament\Widgets\TopBookedCarsChart;
 use App\Models\Company;
+use Filament\View\PanelsRenderHook;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -53,8 +53,7 @@ class AppPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
-            ->tenant(Company::class,slugAttribute: 'slug')
-            // ->tenantDomain('{tenant:slug}.localhost')
+            ->tenant(Company::class, slugAttribute: 'slug')
             ->tenantProfile(CompanyProfile::class)
             ->id('app')
             ->path('app')
@@ -72,7 +71,7 @@ class AppPanelProvider extends PanelProvider
                 'black' => '#1f1f1f',
                 'green' => Color::Green,
             ])
-            ->viteTheme(['resources/css/app.css','resources/js/app.js'])
+            ->viteTheme(['resources/css/app.css', 'resources/js/app.js'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -82,7 +81,6 @@ class AppPanelProvider extends PanelProvider
                 BookingInspectionPage::class,
                 ViewInspectionPage::class
             ])
-            // ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 BookingStatsWidget::class,
                 CarAvailability::class,
@@ -94,12 +92,6 @@ class AppPanelProvider extends PanelProvider
                 BookingSources::class,
                 TopBookedCarsChart::class
             ])
-            // ->spa()
-            // ->spaUrlExceptions(fn (): array => [
-            //     url('/app/*/contract-builder'),
-            //     url('/app/*/fleet-utilization-report'),
-            //     url('/app/*/booking-inspection/*/*')
-            // ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -114,23 +106,24 @@ class AppPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            // ->profile()
-            // ->passwordReset()
-            ->passwordReset(RequestPasswordReset::class) 
-            // ->databaseNotifications()
-            // ->databaseNotificationsPolling('30s')
+            ->passwordReset(RequestPasswordReset::class)
             ->tenantMiddleware([
                 ApplyTenantScopes::class,
                 ApplyTenantThemeColors::class,
             ], isPersistent: true)
             ->authGuard('web')
-            ->plugins([
-                // ActivitylogPlugin::make(),
-            ])
-            // ->renderHook(
-            //     'panels::sidebar.footer',
-            //     fn () => view('subscription-warning'),
-            // )
+            ->plugins([])
+
+            
+            
+            // ============ ADD CHATBOT WIDGET VIA RENDER HOOK ============
+            ->renderHook(
+                'panels::body.end',
+                fn (): string => auth()->check() 
+                    ? view('filament.components.chatbot-widget')->render() 
+                    : '',
+            )
+            
             ->renderHook(
                 'panels::sidebar.footer',
                 fn () => view('install-pwa'),
@@ -153,21 +146,20 @@ class AppPanelProvider extends PanelProvider
                     ? view('filament.components.mobile-nav')->render() 
                     : '',
             )
-            // ->renderHook(
-            //     'panels::auth.login.form.after',
-            //     fn () => view('filament.auth.google-button'),
-            // )
-            
-            // ->favicon(Storage::url('keyfleet-icon.ico'))
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): string => view('filament.components.ai-assistant-button')->render(),
+            )
+
             ->userMenuItems([
                 UserMenuItem::make()
                     ->label('Profile')
-                     ->url(fn (): string => UserProfile::getUrl())
+                    ->url(fn (): string => UserProfile::getUrl())
                     ->icon('heroicon-o-user-circle')
                     ->sort(0),
                 UserMenuItem::make()
                     ->label('My Subscription')
-                     ->url(fn (): string => SubscriptionOverview::getUrl())
+                    ->url(fn (): string => SubscriptionOverview::getUrl())
                     ->icon('heroicon-o-credit-card')
                     ->sort(1),
                 UserMenuItem::make()
@@ -177,11 +169,9 @@ class AppPanelProvider extends PanelProvider
                     ->sort(3),
             ])
             ->navigationGroups([
-                'Transactions',      
-                'Fleet Management',  
-            ])
-            // ->topNavigation()
-            // ->sidebarFullyCollapsibleOnDesktop(false)
-            ;
+                'Transactions',
+                'Fleet Management',
+                'Support',
+            ]);
     }
 }

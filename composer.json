@@ -33,6 +33,7 @@
         "maatwebsite/excel": "^3.1",
         "mallardduck/blade-lucide-icons": "^1.23",
         "omnia-digital/livewire-calendar": "^3.2",
+        "openai-php/laravel": "^0.20.0",
         "owenvoke/blade-fontawesome": "^2.9",
         "rmsramos/activitylog": "^1.0",
         "saade/filament-fullcalendar": "^3.0",

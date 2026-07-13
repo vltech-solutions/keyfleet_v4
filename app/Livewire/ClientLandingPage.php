@@ -34,9 +34,9 @@ class ClientLandingPage extends Component
                     return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
                 }
             }else{
-                if(!$companyInfo->hasAddon('booking-pro')){
-                    return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
-                }
+                // if(!$companyInfo->hasAddon('booking-pro')){
+                //     return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
+                // }
             }
         }
 

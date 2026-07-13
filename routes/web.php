@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 use Stephenjude\FilamentBlog\Models\Post;
 use App\Http\Controllers\InspectionReportController;
 use App\Livewire\PartnerReport;
+use OpenAI\Laravel\Facades\OpenAI;
 
 $centralDomain = config('app.domain');
 /*
@@ -221,3 +222,18 @@ Partner's Dashboard page
 Route::get('/partner/report/{token}', PartnerReport::class)
     ->name('partner.report')
     ->middleware('web');
+
+    // In routes/web.php (temporarily)
+Route::get('/test-openrouter', function () {
+    try {
+        $response = OpenAI::chat()->create([
+            'model' => 'openrouter/free',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Say hello']
+            ]
+        ]);
+        return $response->choices[0]->message->content;
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
