@@ -87,23 +87,24 @@ class Car extends Model
     {
         $bookings = Booking::where('car_id', $this->id)
             ->where('status', 'approved')
-            ->where('start_datetime', '>=',now())
+            ->where('end_datetime', '>=', now()->startOfDay())
             ->get(['start_datetime', 'end_datetime']);
 
         $busyDates = [];
 
         foreach ($bookings as $booking) {
-            $period = CarbonPeriod::create(
-                $booking->start_datetime->toDateString(), 
-                $booking->end_datetime->toDateString()
-            );
+            // Include the full range including start and end dates
+            $startDate = $booking->start_datetime->toDateString();
+            $endDate = $booking->end_datetime->toDateString();
+            
+            $period = CarbonPeriod::create($startDate, $endDate);
             
             foreach ($period as $date) {
                 $busyDates[] = $date->format('Y-m-d');
             }
         }
 
-        return array_values(array_unique($busyDates)); 
+        return array_values(array_unique($busyDates));
     }
 
     public function company(): BelongsTo

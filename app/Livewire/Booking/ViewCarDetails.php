@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerRequirement;
+use App\Models\FundType;
 use App\Models\RequirementTypes;
 use App\Models\Reservation;
 use Carbon\Carbon;
@@ -16,10 +17,12 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Intervention\Image\Facades\Image;
 
 class ViewCarDetails extends Component implements HasForms
 {
-    use WithFileUploads,InteractsWithForms;
+    use WithFileUploads, InteractsWithForms;
     
     public Company $company;
     public $car;
@@ -28,7 +31,7 @@ class ViewCarDetails extends Component implements HasForms
     public $currentStep = 1;
 
     // Step 1
-    public $name, $contact, $address,$email,$facebook;
+    public $name, $contact, $address, $email, $facebook;
 
     // Step 2
     public $start_date, $end_date, $start_time, $end_time, $destination, $pickup_option, $pickup_address, $return_address, $with_driver, $other_drivers, $source;
@@ -39,6 +42,11 @@ class ViewCarDetails extends Component implements HasForms
     // Step 4
     public $requirements = [];
     public $enabledRequirements = [];
+
+    // Step 5 - Reservation Fee
+    public $selectedFundType;
+    public $reservation_fee_receipt;
+    public $agreeToPrivacy = false;
 
     public $tenant;
     public $cars;
@@ -51,7 +59,13 @@ class ViewCarDetails extends Component implements HasForms
     public $repeatRenterData = [];
     public $busyDates = [];
 
-    public bool $agreeToPrivacy = false;
+    public $showQRModal = false;
+    public $qrCodeData = '';
+    public $qrCustomerName = '';
+    public $qrReservationNumber = '';
+    public $qrRepeatToken = '';
+    public $qrIsNewCustomer = false;
+
     protected $rules = [
         'agreeToPrivacy' => 'accepted',
     ];
@@ -65,16 +79,16 @@ class ViewCarDetails extends Component implements HasForms
         }
 
         // Subscription checks
-        if(!$companyInfo->hasAddon('booking-pro')){
+        if (!$companyInfo->hasAddon('booking-pro')) {
             if (!$companyInfo->hasNonBasicPaidSubscription()) {
                 if (!$companyInfo->hasActiveFreeSubscription()) {
                     abort(403, 'The booking service is not available at the moment.');
-                }else{
-                    return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
+                } else {
+                    return redirect()->route('booking.wizard.v2', ['tenant' => $tenant]);
                 }
-            }else{
-                if(!$companyInfo->hasAddon('booking-pro')){
-                    return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
+            } else {
+                if (!$companyInfo->hasAddon('booking-pro')) {
+                    // return redirect()->route('booking.wizard.v2', ['tenant' => $tenant]);
                 }
             }
         }
@@ -82,6 +96,8 @@ class ViewCarDetails extends Component implements HasForms
         $this->company = $companyInfo;
         $this->car = $car;
         $this->selectedCarId = $this->car->id;
+
+        $this->reservation_fee_receipt = null;
 
         $this->busyDates = $this->car->getBusyDates();
         $this->primaryColor = $this->company->primary_color;
@@ -92,7 +108,7 @@ class ViewCarDetails extends Component implements HasForms
     }
 
     public function getImagesProperty()
-    {   
+    {
         if (!$this->car || !isset($this->car->images) || empty($this->car->images)) {
             return [];
         }
@@ -104,7 +120,7 @@ class ViewCarDetails extends Component implements HasForms
             })
             ->map(function ($image) {
                 $path = is_array($image) ? ($image['path'] ?? null) : ($image->path ?? null);
-                
+
                 if (!$path) {
                     return null;
                 }
@@ -118,7 +134,7 @@ class ViewCarDetails extends Component implements HasForms
             if ($this->car->image) {
                 return [Storage::disk('public')->url($this->car->image)];
             }
-            
+
             return [asset('images/placeholder-car.jpg')];
         }
 
@@ -131,7 +147,7 @@ class ViewCarDetails extends Component implements HasForms
             ->where('company_id', $this->company->id)
             ->with('requirements')
             ->first();
-        
+
         if (!$customer) {
             $this->addError('repeat_token', 'Renter not found. QR code may be invalid or expired.');
             return;
@@ -183,7 +199,7 @@ class ViewCarDetails extends Component implements HasForms
         }
 
         return Storage::disk('s3')->temporaryUrl(
-            $value, 
+            $value,
             now()->addMinutes(10)
         );
     }
@@ -194,14 +210,31 @@ class ViewCarDetails extends Component implements HasForms
 
         $pickup = \Carbon\Carbon::parse($this->start_date);
         $return = \Carbon\Carbon::parse($this->end_date);
-        
+
         $days = max(1, $pickup->diffInDays($return));
         $dailyRate = $this->car['price_starts_at'] ?? 0;
-        
+
         return [
             'days' => $days,
             'total' => $days * $dailyRate,
         ];
+    }
+
+    public function getFundsWithBankDetails()
+    {
+        return FundType::where('company_id', $this->company->id)
+            ->whereNotNull('account_number')
+            ->whereNotNull('account_name')
+            ->get();
+    }
+
+    public function getReservationFeeAmount()
+    {
+        if (!$this->company->is_reservation_fee_enabled) {
+            return 0;
+        }
+
+        return $this->company->reservation_fee_amount ?? 0;
     }
 
     public function validateStep($step)
@@ -221,7 +254,7 @@ class ViewCarDetails extends Component implements HasForms
                 'contact' => 'required|min:11|max:11',
                 'address' => 'required',
             ]);
-        }elseif ($step === 3) {
+        } elseif ($step === 3) {
             $requirementTypes = RequirementTypes::whereIn('id', $this->enabledRequirements)->get();
 
             $rules = [];
@@ -232,7 +265,7 @@ class ViewCarDetails extends Component implements HasForms
                 $existingValue = $this->requirements[$req->id] ?? null;
 
                 $isExistingPath = is_string($existingValue);
-                
+
                 if ($req->required) {
                     $rules[$field] = $isExistingPath ? 'nullable' : 'required';
 
@@ -247,11 +280,19 @@ class ViewCarDetails extends Component implements HasForms
             }
 
             $this->validate($rules, $messages);
+        } elseif ($step === 4) {
+            $rules = [
+                'agreeToPrivacy' => 'accepted',
+            ];
 
-            $this->validate(
-                ['agreeToPrivacy' => 'accepted']
-            );
+            if ($this->company->is_reservation_fee_enabled) {
+                $rules['selectedFundType'] = 'required';
+                $rules['reservation_fee_receipt'] = 'required|image|max:2048';
+            }
+
+            $this->validate($rules);
         }
+
         return true;
     }
 
@@ -282,6 +323,8 @@ class ViewCarDetails extends Component implements HasForms
         try {
             $this->validate();
 
+            $isNewCustomer = false;
+
             if ($this->repeat_token) {
                 $customer = Customer::where('repeat_token', $this->repeat_token)->firstOrFail();
 
@@ -294,6 +337,15 @@ class ViewCarDetails extends Component implements HasForms
                     'company_id'      => $this->company->id,
                 ]);
             } else {
+                $existingCustomer = Customer::where('customer_name', $this->name)
+                    ->where('contact_number', $this->contact)
+                    ->where('company_id', $this->company->id)
+                    ->first();
+
+                if (!$existingCustomer) {
+                    $isNewCustomer = true;
+                }
+
                 $customer = Customer::updateOrCreate(
                     [
                         'customer_name'   => $this->name,
@@ -324,17 +376,26 @@ class ViewCarDetails extends Component implements HasForms
                 'status'             => 'pending',
                 'company_id'         => $this->company->id,
                 'reservation_number' => $reservationNumber,
-                'source_id'          => $this->source
+                'source_id'          => $this->source,
+                'fund_type_id'       => $this->selectedFundType,
+                'reservation_fee'    => $this->getReservationFeeAmount(),
             ]);
 
-            // third step save the requirements
+            // Save reservation fee receipt
+            if ($this->reservation_fee_receipt && $this->company->is_reservation_fee_enabled) {
+                $path = $this->reservation_fee_receipt->store("reservation-fees/{$reservation->id}", 's3');
+                $reservation->update([
+                    'reservation_fee_receipt' => $path,
+                ]);
+            }
+
+            // Save requirements
             foreach ($this->enabledRequirements as $requirementId) {
                 $file = $this->requirements[$requirementId] ?? null;
 
                 if (!$file) continue;
 
                 if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
-                    
                     $existing = CustomerRequirement::where('customer_id', $customer->id)
                         ->where('requirement_type', $requirementId)
                         ->first();
@@ -343,7 +404,6 @@ class ViewCarDetails extends Component implements HasForms
                         Storage::disk('s3')->delete($existing->path);
                     }
 
-                    // Store to S3
                     $path = $file->store("requirements/{$customer->id}", 's3');
 
                     CustomerRequirement::updateOrCreate(
@@ -353,58 +413,95 @@ class ViewCarDetails extends Component implements HasForms
                         ],
                         [
                             'path'          => $path,
-                            'status'        => 'pending', 
+                            'status'        => 'pending',
                             'date_uploaded' => now(),
                         ]
                     );
                 }
             }
 
-            // Commit the transaction
             DB::commit();
 
-
-            // $this->dispatch('notify', message: 'Your reservation #' . $reservationNumber . ' has been successfully submitted.',type:'success');
+            // Generate QR Code data
+            $this->qrCodeData = $this->generateQRCode($customer);
+            $this->qrCustomerName = $customer->customer_name;
+            $this->qrReservationNumber = (string) $reservationNumber;
+            $this->qrRepeatToken = $customer->repeat_token;
+            $this->qrIsNewCustomer = $isNewCustomer;
+            $this->showQRModal = true;
 
             Notification::make()
                 ->title('Great!')
-                ->body("Your reservation #".$reservationNumber." has been successfully submitted")
+                ->body("Your reservation #" . $reservationNumber . " has been successfully submitted")
                 ->success()
                 ->send();
-                
 
-            // send sms
-            $carDetails = Car::find($this->selectedCarId);
-            $message = 'New reservation received! Car: '.$carDetails->name.', Reservation ID: '.$reservationNumber.'. Please check your account for details.';
-            $notifNumber = $this->company?->notif_contact;
-
-            // if (!empty($notifNumber)) {
-            //     try {
-            //         $response = SemaphoreService::send($notifNumber, $message);
-
-            //     } catch (\Throwable $e) {
-            //         \Log::warning('Company SMS sending failed', [
-            //             'number' => $notifNumber,
-            //             'error' => $e->getMessage(),
-            //         ]);
-            //     }
-            // }
-
-            // Optional: Reset properties or redirect
-            return redirect()->to('/');
+            return null;
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             \Log::error('Booking Save Failed: ' . $e->getMessage());
 
-            $this->dispatch('notify', message: 'There was a problem saving your booking.',type:'error');
+            Notification::make()
+                ->title('Error!')
+                ->body('There was a problem saving your booking. Please try again.')
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Generate QR Code for customer
+     */
+    protected function generateQRCode($customer)
+    {
+        try {
+            // Generate QR Code
+            $qrBase64 = base64_encode(
+                QrCode::format('png')
+                    ->size(500)
+                    ->margin(2)
+                    ->color(0, 0, 0)
+                    ->backgroundColor(255, 255, 255)
+                    ->generate($customer->repeat_token)
+            );
+
+            $qrBinary = base64_decode($qrBase64);
+            $image = Image::make($qrBinary);
+
+            // Add company logo if available
+            if ($this->company->avatar_url) {
+                $logoPath = storage_path('app/public/' . $this->company->avatar_url);
+                if (file_exists($logoPath)) {
+                    $logoSize = 70;
+                    $logo = Image::make($logoPath)->resize($logoSize, $logoSize, function ($c) {
+                        $c->aspectRatio();
+                        $c->upsize();
+                    });
+
+                    $boxSize = $logoSize + 20;
+                    $box = Image::canvas($boxSize, $boxSize, '#ffffff');
+                    $box->rectangle(0, 0, $boxSize - 1, $boxSize - 1, function ($draw) {
+                        $draw->border(1, '#000');
+                        $draw->background('#dddddd');
+                    });
+                    $box->mask(Image::canvas($boxSize, $boxSize), true);
+                    $box->insert($logo, 'center');
+                    $image->insert($box, 'center');
+                }
+            }
+
+            return 'data:image/png;base64,' . base64_encode($image->encode('png'));
+        } catch (\Exception $e) {
+            \Log::error('QR Code Generation Failed: ' . $e->getMessage());
+            return null;
         }
     }
 
     public function render()
     {
         return view('livewire.booking.view-car-details')
-            ->layout('components.layouts.client-website', ['company' => $this->company]);;
+            ->layout('components.layouts.client-website', ['company' => $this->company]);
     }
 }

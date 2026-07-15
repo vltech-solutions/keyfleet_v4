@@ -27,7 +27,10 @@ class Reservation extends Model
         'reservation_number',
         'booking_id',
         'company_id',
-        'source_id'
+        'source_id',
+        'fund_type_id',
+        'reservation_fee',
+        'reservation_fee_receipt',
     ];
 
     protected $casts = [
@@ -35,8 +38,8 @@ class Reservation extends Model
         'end_date' => 'datetime',
         'datetime_declined' => 'datetime',
         'with_driver' => 'boolean',
+        'reservation_fee' => 'decimal:2',
     ];
-
 
     public function customer()
     {
@@ -58,5 +61,54 @@ class Reservation extends Model
         return $this->belongsTo(Source::class);
     }
 
-    
+    /**
+     * Get the fund type associated with this reservation
+     */
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class, 'fund_type_id');
+    }
+
+    /**
+     * Get the reservation fee for this booking
+     */
+    public function getReservationFee()
+    {
+        if (!$this->company || !$this->company->isReservationFeeEnabled()) {
+            return 0;
+        }
+
+        return $this->company->reservation_fee_amount;
+    }
+
+    /**
+     * Calculate total with reservation fee
+     */
+    public function getTotalWithReservationFee()
+    {
+        $total = $this->total_due ?? 0;
+        $reservationFee = $this->getReservationFee();
+        
+        return $total + $reservationFee;
+    }
+
+    /**
+     * Check if reservation has a receipt uploaded
+     */
+    public function hasReceipt()
+    {
+        return !empty($this->reservation_fee_receipt);
+    }
+
+    /**
+     * Get the receipt URL
+     */
+    public function getReceiptUrl()
+    {
+        if (!$this->reservation_fee_receipt) {
+            return null;
+        }
+
+        return $this->reservation_fee_receipt;
+    }
 }

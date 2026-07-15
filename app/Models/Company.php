@@ -27,12 +27,16 @@ class Company extends Model implements HasAvatar
         'booking_form_dark_mode',
         'requirements_expiry_months',
         'delivery_methods',
-        'offer_driver_service'
+        'offer_driver_service',
+        'reservation_fee_amount', // Add this
+        'is_reservation_fee_enabled', // Add this
     ];
 
     protected $casts = [
         'enabled_requirements' => 'array',
-        'delivery_methods' => 'array'
+        'delivery_methods' => 'array',
+        'reservation_fee_amount' => 'decimal:2',
+        'is_reservation_fee_enabled' => 'boolean',
     ];
 
     public function users(): BelongsToMany
@@ -182,6 +186,31 @@ class Company extends Model implements HasAvatar
         }
 
         return now()->diffInDays($endsAt, false); // returns negative if already expired
+    }
+
+    /**
+     * Get the reservation fee for a booking
+     * 
+     * @param float $totalAmount The total booking amount
+     * @return float
+     */
+    public function getReservationFee($totalAmount = 0)
+    {
+        if (!$this->is_reservation_fee_enabled) {
+            return 0;
+        }
+
+        return $this->reservation_fee_amount ?? 0;
+    }
+
+    /**
+     * Check if reservation fee is enabled
+     * 
+     * @return bool
+     */
+    public function isReservationFeeEnabled()
+    {
+        return $this->is_reservation_fee_enabled && $this->reservation_fee_amount > 0;
     }
 
     protected static function booted(): void

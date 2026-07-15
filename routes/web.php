@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CustomerLoginController;
 use App\Livewire\Booking\ViewCarDetails;
 use App\Livewire\BookingWizard;
 use App\Livewire\ClientLandingPage;
@@ -50,12 +51,17 @@ Route::domain('{tenant}.' . $centralDomain)->group(function () {
     Route::get('/{car}/details', ViewCarDetails::class)->name('car.details');
 
     Route::get('/book', BookingWizard::class)->name('booking.wizard.v2');
+    // Route::get('/book', BookingWizard::class)->name('booking.wizard.v2');
     Route::get('/reservation/success/{reservationNumber}', function ($tenant, $reservationNumber) {
         $company = Company::where('slug', $tenant)->firstOrFail();
         return view('reservation.success', ['reservationNumber' => $reservationNumber, 'tenant' => $tenant, 'company' => $company]);
     })->name('reservation.success');
-
+    
 });
+
+Route::post('/customer/login', [CustomerLoginController::class, 'login'])->name('customer.login');
+Route::get('/customer/{repeat_token}', [CustomerLoginController::class, 'show'])->name('customer.bookings');
+
 
 /*
 |--------------------------------------------------------------------------

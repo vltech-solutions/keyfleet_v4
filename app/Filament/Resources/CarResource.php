@@ -155,7 +155,7 @@ class CarResource extends Resource
 
         $company = auth()->user()->companies()->first();
 
-        if($company->hasAddon('booking-pro')){
+        // if($company->hasAddon('booking-pro')){
             $tabs[] = Tab::make('Images')
                         ->schema([
                             Repeater::make('images')
@@ -193,7 +193,7 @@ class CarResource extends Resource
                                 ->columns(1)
                                 ->grid(4)
                         ]);
-        }
+        // }
 
         return $form
             ->schema([

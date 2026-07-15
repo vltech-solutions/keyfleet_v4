@@ -610,5 +610,26 @@ class Booking extends Model
     {
         return $this->hasOne(BookingInspection::class)->where('type', 'post');
     }
+
+    /**
+     * Get fund types with bank details for this booking
+     */
+    public function getFundsWithBankDetails()
+    {
+        return FundType::where('company_id', $this->company_id)
+            ->whereNotNull('account_number')
+            ->whereNotNull('account_name')
+            ->get();
+    }
+
+    /**
+     * Get fund types with QR codes for this booking
+     */
+    public function getFundsWithQrCodes()
+    {
+        return FundType::where('company_id', $this->company_id)
+            ->whereNotNull('qr_code')
+            ->get();
+    }
     
 }

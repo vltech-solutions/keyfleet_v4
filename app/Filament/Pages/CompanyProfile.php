@@ -127,7 +127,7 @@ class CompanyProfile extends EditTenantProfile
                     Select::make('delivery_methods')
                         ->label('Delivery & Collection Methods')
                         ->placeholder('Select Delivery Methods')
-                        ->multiple() // This enables multiple selection
+                        ->multiple()
                         ->options([
                             'renter_pickup_renter_return' => 'Renter Pickup & Renter Return',
                             'renter_pickup_owner_collection' => 'Renter Pickup & Owner Collection',
@@ -145,72 +145,97 @@ class CompanyProfile extends EditTenantProfile
                     Toggle::make('offer_driver_service')
                         ->label('Offer Driver Service')
                         ->helperText('Include a professional driver option'),
+
+                    // Reservation Fee Settings
+                    Section::make('Reservation Fee Settings')
+                        ->description('Configure fixed reservation fee per booking')
+                        ->schema([
+                            Toggle::make('is_reservation_fee_enabled')
+                                ->label('Enable Reservation Fee')
+                                ->helperText('Enable to charge a fixed reservation fee per booking')
+                                ->default(false)
+                                ->reactive()
+                                ->columnSpanFull(),
+                            
+                            TextInput::make('reservation_fee_amount')
+                                ->label('Reservation Fee Amount')
+                                ->numeric()
+                                ->prefix('₱')
+                                ->default(0)
+                                ->minValue(0)
+                                ->step(0.01)
+                                ->helperText('Fixed amount to charge as reservation fee per booking. This will be added to the total bill.')
+                                ->hidden(fn ($get) => !$get('is_reservation_fee_enabled')), // Changed visible to hidden
+                        ])
+                        ->columns(2)
+                        ->collapsible()
+                        ->collapsed(fn ($get) => !$get('is_reservation_fee_enabled')),
                 ]);
             
             
                 
                 //company website
             
-                // $tabs[] = Tab::make('Website Customization')
-                // ->icon('heroicon-o-globe-alt')
-                // ->schema([
-                //     Section::make('Public Profile')
-                //         ->description('Customize how your car rental page looks to the public.')
-                //         ->schema([
-                //             Grid::make(2)->schema([
-                //                 TextInput::make('website.header_text')
-                //                     ->label('Banner Title')
-                //                     ->placeholder('e.g. Best Car Rental in Manila'),
+                $tabs[] = Tab::make('Website Customization')
+                ->icon('heroicon-o-globe-alt')
+                ->schema([
+                    Section::make('Public Profile')
+                        ->description('Customize how your car rental page looks to the public.')
+                        ->schema([
+                            Grid::make(2)->schema([
+                                TextInput::make('website.header_text')
+                                    ->label('Banner Title')
+                                    ->placeholder('e.g. Best Car Rental in Manila'),
                                     
-                //                 TextInput::make('website.subheader')
-                //                     ->label('Banner Subtitle')
-                //                     ->placeholder('e.g. Affordable & Reliable Vehicles'),
-                //             ]),
+                                TextInput::make('website.subheader')
+                                    ->label('Banner Subtitle')
+                                    ->placeholder('e.g. Affordable & Reliable Vehicles'),
+                            ]),
 
-                //             Grid::make(2)->schema([
-                //                 FileUpload::make('website.banner')
-                //                     ->label('Homepage Banner Image')
-                //                     ->image()
-                //                     ->disk('s3')
-                //                     ->directory('company/banners')
-                //                     ->visibility('private')
-                //                     ->helperText('Recommended size: 1920x600px'),
+                            // Grid::make(2)->schema([
+                                FileUpload::make('website.banner')
+                                    ->label('Homepage Banner Image')
+                                    ->image()
+                                    ->disk('s3')
+                                    ->directory('company/banners')
+                                    ->visibility('private')
+                                    ->helperText('Recommended size: 1920x600px'),
 
-                //                 FileUpload::make('website.about_us_image')
-                //                     ->label('About Us Image')
-                //                     ->image()
-                //                     ->disk('s3')
-                //                     ->directory('company/about')
-                //                     ->visibility('private')
-                //                     ->helperText('Recommended: Square or Portrait image.'),
-                //             ]),
+                                // FileUpload::make('website.about_us_image')
+                                //     ->label('About Us Image')
+                                //     ->image()
+                                //     ->disk('s3')
+                                //     ->directory('company/about')
+                                //     ->visibility('private')
+                                //     ->helperText('Recommended: Square or Portrait image.'),
+                            // ]),
 
-                //             RichEditor::make('website.about_us')
-                //                 ->label('About Us / Terms')
-                //                 ->placeholder('Tell your story or list your general terms...')
-                //                 ->columnSpanFull(),
+                            // RichEditor::make('website.about_us')
+                            //     ->label('About Us / Terms')
+                            //     ->placeholder('Tell your story or list your general terms...')
+                            //     ->columnSpanFull(),
 
-                //             Grid::make(1)->schema([
-                //                 TextInput::make('website.map_url')
-                //                     ->label('Google Maps Embed URL')
-                //                     ->placeholder('https://www.google.com/maps/embed?pb=...')
-                //                     ->helperText('Go to Google Maps > Share > Embed a map and copy only the src URL.')
-                //                     ->reactive(),
+                            // Grid::make(1)->schema([
+                            //     TextInput::make('website.map_url')
+                            //         ->label('Google Maps Embed URL')
+                            //         ->placeholder('https://www.google.com/maps/embed?pb=...')
+                            //         ->helperText('Go to Google Maps > Share > Embed a map and copy only the src URL.')
+                            //         ->reactive(),
 
-                //                 // Map Preview
-                //                 ViewField::make('map_preview')
-                //                     ->view('filament.forms.components.map-preview')
-                //                     ->columnSpanFull()
-                //                     ->hidden(fn ($get) => ! $get('website.map_url')),
+                            //     // Map Preview
+                            //     ViewField::make('map_preview')
+                            //         ->view('filament.forms.components.map-preview')
+                            //         ->columnSpanFull()
+                            //         ->hidden(fn ($get) => ! $get('website.map_url')),
 
-                //                 Textarea::make('website.business_address')
-                //                     ->label('Office Address (Text)')
-                //                     ->rows(3)
-                //                     ->placeholder('House No, Street, Barangay, City, Province')
-                //                     ->columnSpanFull(),
-                //             ]),
-                //         ])
-                // ]);
+                            //     Textarea::make('website.business_address')
+                            //         ->label('Office Address (Text)')
+                            //         ->rows(3)
+                            //         ->placeholder('House No, Street, Barangay, City, Province')
+                            //         ->columnSpanFull(),
+                            // ]),
+                        ])
+                ]);
         }
 
         return $form->schema([
