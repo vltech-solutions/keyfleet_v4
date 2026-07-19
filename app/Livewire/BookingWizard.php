@@ -327,19 +327,20 @@ class BookingWizard extends Component implements HasForms
         $message = 'New reservation received! Car: '.$carDetails->name.', Reservation ID: '.$reservationNumber.'. Please check your account for details.';
         $notifNumber = $this->company?->notif_contact;
 
-        
-
-      	if (!empty($notifNumber)) {
-             try {
-                 $response = SemaphoreService::send($notifNumber, $message);
-
-             } catch (\Throwable $e) {
-                 \Log::warning('Company SMS sending failed', [
-                     'number' => $notifNumber,
-                     'error' => $e->getMessage(),
-                 ]);
-             }
-         }
+      	if (env('SMS_ENABLED', false) && !empty($notifNumber)) {
+            try {
+                $response = SemaphoreService::send($notifNumber, $message);
+                \Log::info('SMS sent successfully', [
+                    'number' => $notifNumber,
+                    'reservation' => $reservationNumber ?? 'N/A'
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('Company SMS sending failed', [
+                    'number' => $notifNumber,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
       
       	$admins = $this->company->users; 
 

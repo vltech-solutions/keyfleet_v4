@@ -19,6 +19,9 @@ class CustomerRequirement extends Model
         'status',
         'date_uploaded',
         'expiration',
+        'file_name',   
+        'file_size',   
+        'mime_type',   
     ];
 
     public function customer()

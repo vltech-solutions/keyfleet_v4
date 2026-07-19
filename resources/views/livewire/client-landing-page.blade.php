@@ -82,7 +82,231 @@
         }
     </style>
     
+    <!-- After the navbar component -->
     <x-booking.navbar :company="$company" :companyLogo="$companyLogo" />
+
+    <!-- Login Modal - Outside navbar scope -->
+    <div x-data="{ 
+        loginModalOpen: false,
+        uploading: false,
+        repeat_token: '',
+        errorMessage: '',
+        successMessage: '',
+        async handleQR(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                this.errorMessage = 'File size exceeds 5MB limit.';
+                e.target.value = '';
+                return;
+            }
+            
+            // Validate file type
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                this.errorMessage = 'Invalid file type. Please upload PNG, JPG, GIF, or WEBP image.';
+                e.target.value = '';
+                return;
+            }
+            
+            this.uploading = true;
+            this.errorMessage = '';
+            this.successMessage = '';
+            
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const image = new Image();
+                image.src = event.target.result;
+                image.onload = async () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.width;
+                    canvas.height = image.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    if (code) {
+                        this.repeat_token = code.data;
+                        await this.submitToken();
+                    } else {
+                        this.errorMessage = 'QR code not detected. Please try a clearer image.';
+                    }
+                    this.uploading = false;
+                    e.target.value = '';
+                };
+            };
+            reader.readAsDataURL(file);
+        },
+        async submitToken() {
+            if (!this.repeat_token) {
+                this.errorMessage = 'Please provide a valid QR code.';
+                return;
+            }
+            
+            try {
+                const response = await fetch('{{ route("customer.login") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ repeat_token: this.repeat_token })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.successMessage = 'Login successful! Redirecting...';
+                    this.errorMessage = '';
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 1000);
+                } else {
+                    this.errorMessage = data.message || 'Invalid QR code. Please try again.';
+                    this.successMessage = '';
+                }
+            } catch (error) {
+                this.errorMessage = 'An error occurred. Please try again.';
+                this.successMessage = '';
+            }
+        }
+    }"
+    x-init="
+        $watch('loginModalOpen', (value) => {
+            if (value) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+                errorMessage = '';
+                successMessage = '';
+                repeat_token = '';
+            }
+        });
+        
+        // Listen for the open-login-modal event from navbar
+        window.addEventListener('open-login-modal', () => {
+            loginModalOpen = true;
+        });
+    "
+    x-cloak>
+        
+        <div x-show="loginModalOpen" 
+            class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            @click.away="loginModalOpen = false">
+            
+            <div class="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+                <!-- Header -->
+                <div class="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">Login with QR Code</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Upload your QR code to access your bookings</p>
+                        </div>
+                        <button @click="loginModalOpen = false" 
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Body -->
+                <div class="p-6">
+                    <!-- Error Message -->
+                    <div x-show="errorMessage" 
+                        x-transition
+                        class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                        <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="errorMessage"></span>
+                        </p>
+                    </div>
+                    
+                    <!-- Success Message -->
+                    <div x-show="successMessage" 
+                        x-transition
+                        class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <p class="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="successMessage"></span>
+                        </p>
+                    </div>
+                    
+                    <!-- QR Upload Area -->
+                    <div class="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-8 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                                <template x-if="!uploading">
+                                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </template>
+                                <template x-if="uploading">
+                                    <svg class="animate-spin w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </template>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <span x-show="!uploading">Upload your QR code image</span>
+                                    <span x-show="uploading">Processing...</span>
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF or WEBP (max 5MB)</p>
+                            </div>
+                            
+                            <label class="relative inline-flex items-center px-6 py-2.5 bg-[var(--tw-primary)] text-white text-sm font-medium rounded-xl cursor-pointer hover:opacity-90 transition-opacity">
+                                <span x-show="!uploading">Choose File</span>
+                                <span x-show="uploading">Processing...</span>
+                                <input type="file" 
+                                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" 
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                    @change="handleQR" 
+                                    :disabled="uploading">
+                            </label>
+                            
+                            <!-- File size warning -->
+                            <p class="text-[10px] text-gray-400 dark:text-gray-500">
+                                Maximum file size: 5MB
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Manual Token Input -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Or enter token manually</label>
+                        <div class="flex gap-2">
+                            <input type="text" 
+                                x-model="repeat_token" 
+                                placeholder="Paste your token here"
+                                class="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-blue-500 focus:ring-0 transition-all dark:text-white text-sm">
+                            <button @click="submitToken" 
+                                    class="px-6 py-2 bg-[var(--tw-primary)] text-white rounded-xl hover:opacity-90 transition font-medium text-sm whitespace-nowrap">
+                                Login
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     
     
     <!-- Modern Hero Banner - Premium Design with Client Primary Color -->

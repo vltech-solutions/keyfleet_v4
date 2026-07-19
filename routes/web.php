@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Stephenjude\FilamentBlog\Models\Post;
 use App\Http\Controllers\InspectionReportController;
+use App\Livewire\CustomerPortal\Bookings;
+use App\Livewire\CustomerPortal\Dashboard;
+use App\Livewire\CustomerPortal\Reservations;
 use App\Livewire\PartnerReport;
 
 $centralDomain = config('app.domain');
@@ -52,17 +55,31 @@ Route::domain('{tenant}.' . $centralDomain)->group(function () {
 
     Route::get('/book', BookingWizard::class)->name('booking.wizard.v2');
     // Route::get('/book', BookingWizard::class)->name('booking.wizard.v2');
-    Route::get('/reservation/success/{reservationNumber}', function ($tenant, $reservationNumber) {
-        $company = Company::where('slug', $tenant)->firstOrFail();
-        return view('reservation.success', ['reservationNumber' => $reservationNumber, 'tenant' => $tenant, 'company' => $company]);
-    })->name('reservation.success');
+    // Route::get('/reservation/success/{reservationNumber}', function ($tenant, $reservationNumber) {
+    //     $company = Company::where('slug', $tenant)->firstOrFail();
+    //     return view('reservation.success', ['reservationNumber' => $reservationNumber, 'tenant' => $tenant, 'company' => $company]);
+    // })->name('reservation.success');
     
 });
 
-Route::post('/customer/login', [CustomerLoginController::class, 'login'])->name('customer.login');
-Route::get('/customer/{repeat_token}', [CustomerLoginController::class, 'show'])->name('customer.bookings');
+Route::get('/customer/{repeatToken}/dashboard', Dashboard::class)->name('customer.dashboard');
+Route::get('/customer/{repeatToken}/reservations', Reservations::class)->name('customer.reservations');
+Route::get('/customer/{repeatToken}/bookings', Bookings::class)->name('customer.bookings');
 
+// Redirect /customer/{repeat_token} to dashboard
+Route::get('/customer/{repeatToken}', function ($repeatToken) {
+    return redirect()->route('customer.dashboard', ['repeatToken' => $repeatToken]);
+})->name('customer.portal');
 
+Route::post('/customer/logout', function () {
+    session()->forget(['customer_token', 'customer_id']);
+    return redirect()->to('/');
+})->name('customer.logout');
+
+// Login Route
+Route::post('/customer/login', [CustomerLoginController::class, 'login'])
+    ->name('customer.login')
+    ->middleware('throttle:5,60');
 /*
 |--------------------------------------------------------------------------
 | 2. CENTRAL DOMAIN ROUTES (Main Landing Page & System)

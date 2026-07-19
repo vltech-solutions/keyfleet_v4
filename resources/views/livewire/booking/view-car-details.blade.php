@@ -234,7 +234,7 @@
          x-transition:enter-end="opacity-100 scale-100"
          @click.away="show = false; $wire.showQRModal = false">
         
-        <div class="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden ">
             <!-- Header -->
             <div class="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                 <div class="flex items-center justify-between">

@@ -31,15 +31,59 @@ class Reservation extends Model
         'fund_type_id',
         'reservation_fee',
         'reservation_fee_receipt',
+        'datetime_cancelled',
+        'cancellation_reason'
     ];
 
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'datetime_declined' => 'datetime',
+        'datetime_cancelled' => 'datetime',
         'with_driver' => 'boolean',
         'reservation_fee' => 'decimal:2',
     ];
+
+    /**
+     * Get the current status of the reservation
+     * - booking_id exists = approved
+     * - datetime_declined exists = declined
+     * - datetime_cancelled exists = cancelled
+     * - default = pending
+     */
+    public function getStatusAttribute()
+    {
+        if ($this->datetime_cancelled) {
+            return 'cancelled';
+        }
+        
+        if ($this->datetime_declined) {
+            return 'declined';
+        }
+        
+        if ($this->booking_id) {
+            return 'approved';
+        }
+        
+        return 'pending';
+    }
+
+    /**
+     * Get the status label with badge class
+     */
+    public function getStatusBadgeAttribute()
+    {
+        $status = $this->status;
+        
+        $classes = [
+            'pending' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+            'approved' => 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+            'declined' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+            'cancelled' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        ];
+        
+        return $classes[$status] ?? 'bg-gray-100 text-gray-700';
+    }
 
     public function customer()
     {
@@ -110,5 +154,17 @@ class Reservation extends Model
         }
 
         return $this->reservation_fee_receipt;
+    }
+    
+    /**
+     * Check if reservation is completed (past end date)
+     */
+    public function getIsCompletedAttribute()
+    {
+        if (!$this->end_date) {
+            return false;
+        }
+        
+        return $this->end_date->isPast() && $this->status === 'approved';
     }
 }

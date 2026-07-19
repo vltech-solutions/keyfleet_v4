@@ -377,18 +377,22 @@ class ViewReservation extends EditRecord
                         //send message to the customer;
                         $message = "Booking approved! Track it using the booking form. Ref#: ".$record->reservation_number." - ".$companyInfo->name;
                         $renterNumber = $record->customer?->contact_number;
-                         if (!empty($renterNumber)) {
-                             try {
-                                 $response = SemaphoreService::send($renterNumber, $message);
-
-                             } catch (\Throwable $e) {
-                                //  Don’t throw an error, just log silently
-                                 \Log::warning('SMS sending failed', [
-                                     'number' => $renterNumber,
-                                     'error' => $e->getMessage(),
-                                 ]);
-                             }
-                         }
+                        if (env('SMS_ENABLED', false) && !empty($renterNumber)) {
+                            try {
+                                $response = SemaphoreService::send($renterNumber, $message);
+                                \Log::info('SMS sent successfully', [
+                                    'number' => $renterNumber,
+                                    'booking' => $booking->id ?? 'N/A'
+                                ]);
+                            } catch (\Throwable $e) {
+                                // Don't throw an error, just log silently
+                                \Log::warning('SMS sending failed', [
+                                    'number' => $renterNumber,
+                                    'error' => $e->getMessage(),
+                                    'booking' => $booking->id ?? 'N/A'
+                                ]);
+                            }
+                        }
 
                         Notification::make()
                             ->title('Reservation Approved & Booking Created with Pricing')
@@ -411,18 +415,22 @@ class ViewReservation extends EditRecord
                       	//send message to the customer;
                         $message = "Booking declined. Reason: ".$data['decline_reason'];
                         $renterNumber = $record->customer?->contact_number;
-                         if (!empty($renterNumber)) {
-                             try {
-                                 $response = SemaphoreService::send($renterNumber, $message);
-
-                             } catch (\Throwable $e) {
-                                 // Don’t throw an error, just log silently
-                                 \Log::warning('SMS sending failed', [
-                                     'number' => $renterNumber,
-                                     'error' => $e->getMessage(),
-                                 ]);
-                             }
-                         }
+                        if (env('SMS_ENABLED', false) && !empty($renterNumber)) {
+                            try {
+                                $response = SemaphoreService::send($renterNumber, $message);
+                                \Log::info('SMS sent successfully', [
+                                    'number' => $renterNumber,
+                                    'booking' => $booking->id ?? 'N/A'
+                                ]);
+                            } catch (\Throwable $e) {
+                                // Don't throw an error, just log silently
+                                \Log::warning('SMS sending failed', [
+                                    'number' => $renterNumber,
+                                    'error' => $e->getMessage(),
+                                    'booking' => $booking->id ?? 'N/A'
+                                ]);
+                            }
+                        }
 
                         
                         $record->update([

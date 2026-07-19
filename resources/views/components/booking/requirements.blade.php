@@ -21,6 +21,11 @@
                     <p class="text-xs text-gray-500 mb-2">{{ $req->helper }}</p>
                 @endif
 
+                <!-- File size and type info -->
+                <p class="text-[10px] text-gray-400 dark:text-gray-500">
+                    Allowed: JPG, PNG, GIF, WEBP, BMP • Max size: 5MB
+                </p>
+
                 <div 
                     x-data="{ isUploading: false, progress: 0 }"
                     x-on:livewire-upload-start="isUploading = true"

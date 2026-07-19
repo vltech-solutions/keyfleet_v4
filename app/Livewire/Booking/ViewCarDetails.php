@@ -9,6 +9,9 @@ use App\Models\CustomerRequirement;
 use App\Models\FundType;
 use App\Models\RequirementTypes;
 use App\Models\Reservation;
+use App\Notifications\NewReservationNotification;
+use App\Rules\SecureImage;
+use App\Services\SemaphoreService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -66,6 +69,10 @@ class ViewCarDetails extends Component implements HasForms
     public $qrRepeatToken = '';
     public $qrIsNewCustomer = false;
 
+    // Customer session data
+    public $isLoggedIn = false;
+    public $loggedInCustomer = null;
+
     protected $rules = [
         'agreeToPrivacy' => 'accepted',
     ];
@@ -104,7 +111,46 @@ class ViewCarDetails extends Component implements HasForms
 
         $this->enabledRequirements = $this->company->enabled_requirements;
 
+        // Check if customer is logged in and auto-populate
+        $this->loadCustomerSession();
+
         $this->form->fill();
+    }
+
+    /**
+     * Load customer data from session if logged in
+     */
+    protected function loadCustomerSession()
+    {
+        $customerToken = session('customer_token');
+        
+        if (!empty($customerToken)) {
+            $customer = Customer::where('repeat_token', $customerToken)
+                ->where('company_id', $this->company->id)
+                ->with('requirements')
+                ->first();
+
+            if ($customer) {
+                $this->isLoggedIn = true;
+                $this->loggedInCustomer = $customer;
+                
+                // Auto-populate the form fields
+                $this->name = $customer->customer_name;
+                $this->contact = $customer->contact_number;
+                $this->email = $customer->email;
+                $this->facebook = $customer->facebook_name;
+                $this->address = $customer->address;
+
+                // Load valid requirements
+                $validRequirements = $customer->requirements->filter(function ($req) {
+                    return is_null($req->expiration) || $req->expiration >= now();
+                });
+
+                foreach ($validRequirements as $req) {
+                    $this->requirements[$req->requirement_type] = $req->path;
+                }
+            }
+        }
     }
 
     public function getImagesProperty()
@@ -237,6 +283,65 @@ class ViewCarDetails extends Component implements HasForms
         return $this->company->reservation_fee_amount ?? 0;
     }
 
+     /**
+     * Handle secure file upload
+     */
+    protected function handleSecureFileUpload($file, $customerId, $requirementId)
+    {
+        // Generate a secure filename
+        $extension = $file->getClientOriginalExtension();
+        $filename = time() . '_' . uniqid() . '.' . $extension;
+        
+        // Sanitize the filename
+        $filename = preg_replace('/[^a-zA-Z0-9._-]/', '', $filename);
+        
+        // Store in a secure directory structure
+        $path = $file->storeAs(
+            "requirements/{$customerId}/" . date('Y/m/d'),
+            $filename,
+            's3'
+        );
+        
+        return $path;
+    }
+
+    /**
+     * Validate file before upload
+     */
+    protected function validateFileUpload($file, $requirementId)
+    {
+        // Additional server-side validation
+        $validator = validator(['file' => $file], [
+            'file' => [
+                'required',
+                'image',
+                'mimes:jpeg,png,jpg,gif,webp,bmp',
+                'max:5120',
+                new SecureImage(),
+            ]
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Exception($validator->errors()->first('file'));
+        }
+
+        return true;
+    }
+
+    /**
+     * Clean old files
+     */
+    protected function cleanOldFile($customerId, $requirementId)
+    {
+        $existing = CustomerRequirement::where('customer_id', $customerId)
+            ->where('requirement_type', $requirementId)
+            ->first();
+
+        if ($existing && Storage::disk('s3')->exists($existing->path)) {
+            Storage::disk('s3')->delete($existing->path);
+        }
+    }
+
     public function validateStep($step)
     {
         if ($step === 1) {
@@ -270,12 +375,15 @@ class ViewCarDetails extends Component implements HasForms
                     $rules[$field] = $isExistingPath ? 'nullable' : 'required';
 
                     if (!$isExistingPath && $existingValue !== null) {
-                        $rules[$field] .= '|image|max:2048';
+                        $rules[$field] .= '|image|mimes:jpeg,png,jpg,gif,webp,bmp|max:5120'; // 5MB max
+                        $rules[$field] .= '|dimensions:min_width=50,min_height=50,max_width=10000,max_height=10000'; // Add dimensions validation
                     }
 
                     $messages["{$field}.required"] = "The {$req->label} is required.";
                     $messages["{$field}.image"] = "The {$req->label} must be a valid image file.";
-                    $messages["{$field}.max"] = "The {$req->label} size must not exceed 2MB.";
+                    $messages["{$field}.mimes"] = "The {$req->label} must be a JPG, PNG, GIF, WEBP, or BMP file.";
+                    $messages["{$field}.max"] = "The {$req->label} size must not exceed 5MB.";
+                    $messages["{$field}.dimensions"] = "The {$req->label} must be at least 50x50 pixels.";
                 }
             }
 
@@ -389,34 +497,42 @@ class ViewCarDetails extends Component implements HasForms
                 ]);
             }
 
-            // Save requirements
+            // Save requirements with secure upload
             foreach ($this->enabledRequirements as $requirementId) {
                 $file = $this->requirements[$requirementId] ?? null;
 
                 if (!$file) continue;
 
                 if ($file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
-                    $existing = CustomerRequirement::where('customer_id', $customer->id)
-                        ->where('requirement_type', $requirementId)
-                        ->first();
-
-                    if ($existing && Storage::disk('s3')->exists($existing->path)) {
-                        Storage::disk('s3')->delete($existing->path);
+                    try {
+                        // Validate the file
+                        $this->validateFileUpload($file, $requirementId);
+                        
+                        // Clean old file
+                        $this->cleanOldFile($customer->id, $requirementId);
+                        
+                        // Upload file securely
+                        $path = $this->handleSecureFileUpload($file, $customer->id, $requirementId);
+                        
+                        // Save to database
+                        CustomerRequirement::updateOrCreate(
+                            [
+                                'customer_id'      => $customer->id,
+                                'requirement_type' => $requirementId,
+                            ],
+                            [
+                                'path'          => $path,
+                                'status'        => 'pending',
+                                'date_uploaded' => now(),
+                                'file_name'     => $file->getClientOriginalName(),
+                                'file_size'     => $file->getSize(),
+                                'mime_type'     => $file->getMimeType(),
+                            ]
+                        );
+                    } catch (\Exception $e) {
+                        \Log::error('File upload failed: ' . $e->getMessage());
+                        throw new \Exception('Failed to upload requirement: ' . $e->getMessage());
                     }
-
-                    $path = $file->store("requirements/{$customer->id}", 's3');
-
-                    CustomerRequirement::updateOrCreate(
-                        [
-                            'customer_id'      => $customer->id,
-                            'requirement_type' => $requirementId,
-                        ],
-                        [
-                            'path'          => $path,
-                            'status'        => 'pending',
-                            'date_uploaded' => now(),
-                        ]
-                    );
                 }
             }
 
@@ -429,6 +545,30 @@ class ViewCarDetails extends Component implements HasForms
             $this->qrRepeatToken = $customer->repeat_token;
             $this->qrIsNewCustomer = $isNewCustomer;
             $this->showQRModal = true;
+
+            //send sms
+            // $carDetails = Car::find($this->selectedCarId);
+            // $message = 'New reservation received! Car: '.$carDetails->name.', Reservation ID: '.$reservationNumber.'. Please check your account for details.';
+            // $notifNumber = $this->company?->notif_contact;
+
+            // if (!empty($notifNumber)) {
+            //     try {
+            //         $response = SemaphoreService::send($notifNumber, $message);
+
+            //     } catch (\Throwable $e) {
+            //         \Log::warning('Company SMS sending failed', [
+            //             'number' => $notifNumber,
+            //             'error' => $e->getMessage(),
+            //         ]);
+            //     }
+            // }
+
+            // Pushnotif
+            // $admins = $this->company->users; 
+
+            // foreach ($admins as $admin) {
+            //     $admin->notify(new NewReservationNotification($reservation));
+            // }
 
             Notification::make()
                 ->title('Great!')
@@ -501,7 +641,9 @@ class ViewCarDetails extends Component implements HasForms
 
     public function render()
     {
-        return view('livewire.booking.view-car-details')
-            ->layout('components.layouts.client-website', ['company' => $this->company]);
+        return view('livewire.booking.view-car-details', [
+            'isLoggedIn' => $this->isLoggedIn,
+            'loggedInCustomer' => $this->loggedInCustomer,
+        ])->layout('components.layouts.client-website', ['company' => $this->company]);
     }
 }

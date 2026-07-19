@@ -37,6 +37,14 @@ class Customer extends Model
         return $this->HasMany(CustomerRequirement::class);
     }
 
+    /**
+     * Get the reservations for the customer (alias for bookings)
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($customer) {

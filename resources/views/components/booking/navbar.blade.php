@@ -38,29 +38,60 @@
                 Our Fleet
             </a>
             
-            {{-- Login Button --}}
-            <button @click="loginModalOpen = true" 
-                class="px-4 py-2 rounded-full border transition-all duration-300 flex items-center gap-2"
-                x-bind:class="(scrolled || mobileMenuOpen) 
-                    ? 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white' 
-                    : 'border-white/80 text-white/80 hover:bg-white hover:text-gray-900'">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                </svg>
-                <span>Login</span>
-            </button>
+            {{-- Check if customer is logged in --}}
+            @php
+                $customerToken = session('customer_token');
+                $isLoggedIn = !empty($customerToken);
+            @endphp
+
+            @if($isLoggedIn)
+                {{-- Show Account link when logged in --}}
+                <a href="{{ route('customer.dashboard', ['repeatToken' => $customerToken]) }}" 
+                    class="px-4 py-2 rounded-full border transition-all duration-300 flex items-center gap-2"
+                    x-bind:class="(scrolled || mobileMenuOpen) 
+                        ? 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white' 
+                        : 'border-white/80 text-white/80 hover:bg-white hover:text-gray-900'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span>My Account</span>
+                </a>
+            @else
+                {{-- Show Login button when not logged in --}}
+                <button @click="$dispatch('open-login-modal')" 
+                    class="px-4 py-2 rounded-full border transition-all duration-300 flex items-center gap-2"
+                    x-bind:class="(scrolled || mobileMenuOpen) 
+                        ? 'border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white' 
+                        : 'border-white/80 text-white/80 hover:bg-white hover:text-gray-900'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                    <span>Login</span>
+                </button>
+            @endif
         </div>
 
         {{-- Mobile Hamburger Button --}}
         <div class="flex md:hidden items-center z-[60] gap-2">
-            {{-- Mobile Login Button --}}
-            <button @click="loginModalOpen = true" 
+            @if($isLoggedIn)
+                {{-- Mobile Account link --}}
+                <a href="{{ route('customer.dashboard', ['repeatToken' => $customerToken]) }}" 
                     class="p-2 transition-colors focus:outline-none"
                     x-bind:class="(scrolled || mobileMenuOpen) ? 'text-gray-900' : 'text-white'">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                </svg>
-            </button>
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </a>
+            @else
+                {{-- Mobile Login Button --}}
+                <button @click="$dispatch('open-login-modal')" 
+                        class="p-2 transition-colors focus:outline-none"
+                        x-bind:class="(scrolled || mobileMenuOpen) ? 'text-gray-900' : 'text-white'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                </button>
+            @endif
             
             <button @click="mobileMenuOpen = !mobileMenuOpen" 
                     class="p-2 transition-colors focus:outline-none"
@@ -89,12 +120,25 @@
         <div class="flex flex-col gap-6 text-center">
             <a href="#cars" @click="mobileMenuOpen = false" class="text-xl font-bold text-gray-900 hover:text-blue-600">Our Fleet</a>
             <hr class="border-gray-100">
-            <button @click="loginModalOpen = true; mobileMenuOpen = false" class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center justify-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                </svg>
-                Login
-            </button>
+            
+            @if($isLoggedIn)
+                <a href="{{ route('customer.dashboard', ['repeatToken' => $customerToken]) }}" 
+                   @click="mobileMenuOpen = false" 
+                   class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center justify-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    My Account
+                </a>
+            @else
+                <button @click="$dispatch('open-login-modal'); mobileMenuOpen = false" 
+                        class="text-xl font-bold text-gray-900 hover:text-blue-600 flex items-center justify-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                    Login
+                </button>
+            @endif
         </div>
     </div>
 </nav>

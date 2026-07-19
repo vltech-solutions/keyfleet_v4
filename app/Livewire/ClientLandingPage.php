@@ -63,6 +63,11 @@ class ClientLandingPage extends Component
                 now()->addMinutes(5)
             );
         }
+
+
+        // Set tenant in session for use in other controllers
+        session(['tenant_id' => $companyInfo->id]);
+        session(['tenant_slug' => $companyInfo->slug]);
         
         // Set default dates
         // $this->startDate = Carbon::now()->format('Y-m-d');
