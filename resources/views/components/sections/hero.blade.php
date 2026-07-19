@@ -142,7 +142,7 @@
 
 <style>
     .dark .keyfleet-gradient {
-        background-image: linear-gradient(to right, #1a3a6b, #0d4a7a);
+        background-image: linear-gradient(to right, #111827, #0a0f1a);
     }
     .dark .banner-bg {
         filter: brightness(0.9);

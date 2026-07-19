@@ -73,7 +73,7 @@ class CompanyProfile extends EditTenantProfile
         // Check tenant/company subscription
         $company = filament()->getTenant();
 
-        if ($company && ($company->hasNonBasicPaidSubscription() || $company->hasActiveFreeSubscription() ||  $company->hasAddon('booking-pro'))) {
+        if ($company && ($company->hasNonBasicPaidSubscription() || $company->hasActiveFreeSubscription())) {
             $tabs[] = Tab::make('Online Booking Form')
                 ->icon('heroicon-o-calendar-days')
                 ->schema([
@@ -146,6 +146,7 @@ class CompanyProfile extends EditTenantProfile
                         ->label('Offer Driver Service')
                         ->helperText('Include a professional driver option'),
 
+                        
                     // Reservation Fee Settings
                     Section::make('Reservation Fee Settings')
                         ->description('Configure fixed reservation fee per booking')
@@ -169,19 +170,33 @@ class CompanyProfile extends EditTenantProfile
                         ])
                         ->columns(2)
                         ->collapsible()
-                        ->collapsed(fn ($get) => !$get('is_reservation_fee_enabled')),
+                        ->collapsed(fn ($get) => !$get('is_reservation_fee_enabled'))
+                        ->visible(fn ($record) => $record && $record->hasProOrMasterSubscription()),
                 ]);
-            
-            
                 
                 //company website
-            
+            if ($company && ($company->hasProOrMasterSubscription() || $company->hasActiveFreeSubscription())) {
                 $tabs[] = Tab::make('Website Customization')
                 ->icon('heroicon-o-globe-alt')
                 ->schema([
                     Section::make('Public Profile')
                         ->description('Customize how your car rental page looks to the public.')
                         ->schema([
+
+                        TextInput::make('website_link')
+                            ->label('Your Website URL')
+                            ->readonly()
+                            ->formatStateUsing(fn ($record) => $record ? url('/' . $record->slug) : '')
+                            ->suffixAction(
+                                Action::make('viewWebsite')
+                                    ->label('Visit Website')
+                                    ->icon('heroicon-o-arrow-top-right-on-square')
+                                    ->url(fn ($record) => $record ? url('/' . $record->slug) : '#', true)
+                                    ->visible(fn ($record) => filled($record?->slug))
+                                    ->color('success')
+                            )
+                            ->helperText('Share this link with your customers to view your website.'),
+
                             Grid::make(2)->schema([
                                 TextInput::make('website.header_text')
                                     ->label('Banner Title')
@@ -236,6 +251,7 @@ class CompanyProfile extends EditTenantProfile
                             // ]),
                         ])
                 ]);
+            }
         }
 
         return $form->schema([

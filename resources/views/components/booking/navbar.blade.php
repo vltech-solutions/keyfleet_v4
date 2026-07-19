@@ -17,7 +17,7 @@
         :class="scrolled ? 'h-16' : 'h-24'">
         
         {{-- Brand/Logo --}}
-        <a href="/" class="flex items-center gap-2 font-bold text-xl tracking-tight transition-colors duration-300 z-[60]">
+        <a href="/{{ $company->slug }}" class="flex items-center gap-2 font-bold text-xl tracking-tight transition-colors duration-300 z-[60]">
             <img src="{{ $companyLogo }}" alt="{{ $company->name }} Logo" 
                 class="object-contain w-10 h-10 rounded-md shadow-sm transition-transform"
                 :class="scrolled ? 'scale-100' : 'scale-110'">

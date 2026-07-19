@@ -27,6 +27,12 @@ class Partners extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function canManageTokens(): bool
+    {
+        $company = $this->company;
+        return $company && ($company->hasProOrMasterSubscription() || $company->hasActiveFreeSubscription());
+    }
+
     /**
      * Generate a new access token for the partner
      */

@@ -138,15 +138,15 @@ class PartnerResource extends Resource
                 //
             ])
             ->actions(
-                // Tables\Actions\EditAction::make()->color('gray'),
                 (auth()->user()->hasActiveSubscription()) ? [
-
                     Tables\Actions\ActionGroup::make(
                         [
                             Tables\Actions\EditAction::make()->color('gray'),
+                            
                             Action::make('generate_token')
                                 ->label('Generate Link')
                                 ->icon('heroicon-o-link')
+                                ->visible(fn ($record) => $record->canManageTokens())
                                 ->action(function ($record) {
                                     $token = $record->generateAccessToken();
                                     $link = route('partner.report', $token);
@@ -162,9 +162,7 @@ class PartnerResource extends Resource
                                 ->label('Copy Link')
                                 ->icon('heroicon-o-clipboard')
                                 ->color('success')
-                                ->visible(function ($record) {
-                                    return $record->access_token !== null;
-                                })
+                                ->visible(fn ($record) => $record->access_token !== null && $record->canManageTokens())
                                 ->action(function ($record) {
                                     $link = route('partner.report', $record->access_token);
                                     
@@ -177,11 +175,12 @@ class PartnerResource extends Resource
                                 ->extraAttributes([
                                     'onclick' => "navigator.clipboard.writeText('" . route('partner.report', 'TOKEN_PLACEHOLDER') . "'.replace('TOKEN_PLACEHOLDER', this.closest('tr').dataset.recordId))",
                                 ]),
-                                
+                            
                             Action::make('regenerate_token')
                                 ->label('Regenerate Link')
                                 ->icon('heroicon-o-arrow-path')
                                 ->color('warning')
+                                ->visible(fn ($record) => $record->canManageTokens())
                                 ->requiresConfirmation()
                                 ->modalHeading('Regenerate Report Link')
                                 ->modalDescription('This will invalidate the current link and generate a new one. The partner will need to use the new link.')
@@ -196,37 +195,31 @@ class PartnerResource extends Resource
                                         ->success()
                                         ->send();
                                 }),
-                                
+                            
                             Action::make('revoke_token')
-                            ->label('Revoke Access')
-                            ->icon('heroicon-o-x-circle')
-                            ->color('danger')
-                            ->requiresConfirmation()
-                            ->modalHeading('Revoke Access')
-                            ->modalDescription('This will revoke access to the report immediately. The partner will no longer be able to view the report.')
-                            ->modalSubmitActionLabel('Yes, revoke')
-                            ->visible(function ($record) {
-                                return $record->access_token !== null;
-                            })
-                            ->action(function ($record) {
-                                $record->access_token = null;
-                                $record->token_expires_at = null;
-                                $record->save();
-                                
-                                Notification::make()
-                                    ->title('Access revoked!')
-                                    ->body('The partner can no longer access the report.')
-                                    ->success()
-                                    ->send();
-                            }),
-                        
-                    
+                                ->label('Revoke Access')
+                                ->icon('heroicon-o-x-circle')
+                                ->color('danger')
+                                ->requiresConfirmation()
+                                ->modalHeading('Revoke Access')
+                                ->modalDescription('This will revoke access to the report immediately. The partner will no longer be able to view the report.')
+                                ->modalSubmitActionLabel('Yes, revoke')
+                                ->visible(fn ($record) => $record->access_token !== null)
+                                ->action(function ($record) {
+                                    $record->access_token = null;
+                                    $record->token_expires_at = null;
+                                    $record->save();
+                                    
+                                    Notification::make()
+                                        ->title('Access revoked!')
+                                        ->body('The partner can no longer access the report.')
+                                        ->success()
+                                        ->send();
+                                }),
                         ]    
                     )
-                        ->icon('heroicon-o-ellipsis-horizontal-circle')
-                        ->size(ActionSize::ExtraLarge)
-
-                    // Tables\Actions\DeleteAction::make()->color('gray'),
+                    ->icon('heroicon-o-ellipsis-horizontal-circle')
+                    ->size(ActionSize::ExtraLarge)
                 ] : []
             )
             ->bulkActions([

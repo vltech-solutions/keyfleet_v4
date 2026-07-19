@@ -2,6 +2,7 @@
 
 namespace App\Livewire\CustomerPortal;
 
+use App\Models\Company;
 use App\Models\Customer;
 use Livewire\Component;
 
@@ -18,6 +19,8 @@ class Layout extends Component
             abort(404, 'Company not found');
         }
 
+        $tenant = Company::where('id',$tenantId)->first();
+
         $this->customer = Customer::where('repeat_token', $repeatToken)
             ->where('company_id', $tenantId)
             ->firstOrFail();
@@ -31,7 +34,7 @@ class Layout extends Component
         session()->forget(['customer_token', 'customer_id']);
         
         // Redirect to home
-        return redirect()->to('/');
+        return redirect()->to('/'.session('tenant_slug'));
     }
 
     public function render()

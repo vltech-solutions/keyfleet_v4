@@ -23,7 +23,7 @@
     Book the {{ $car->name }}. Premium car rental with hassle-free booking from {{ $company->name }}.
 @endsection
 
-<main class="min-h-screen bg-gray-50 dark:bg-gray-900 pt-6 pb-32 md:pb-16">
+<main class="min-h-screen bg-gray-50 dark:bg-gray-900 pt-6 pb-32 md:pb-16 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 md:px-8">
         
         <!-- Back Button -->
@@ -49,7 +49,7 @@
             <div class="lg:col-span-2 space-y-8">
                 
                 <!-- Header -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
                     <div class="flex flex-wrap items-center gap-3 mb-3">
                         <span class="inline-flex items-center px-3 py-1 rounded-lg text-white text-xs font-bold uppercase tracking-wider" style="background: var(--tw-primary);">
                             {{ $car->carType?->car_type ?? 'SUV' }}
@@ -60,7 +60,6 @@
                     </div>
                     <h1 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white">{{ $car->name }}</h1>
                     <p class="text-gray-500 dark:text-gray-400 text-lg mt-1">{{ $car->brand }} · {{ $car->model }} · {{ $car->year }}</p>
-                    
                 </div>
 
                 <!-- Quick Specs Row -->
@@ -74,7 +73,7 @@
                         ];
                     @endphp
                     @foreach($quickSpecs as $spec)
-                        <div class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" style="color: var(--tw-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $spec['icon'] !!}</svg>
                             {{ $spec['label'] }}
                         </div>
@@ -82,7 +81,7 @@
                 </div>
 
                 <!-- Detailed Specs -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5" style="color: var(--tw-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -105,7 +104,7 @@
                             ];
                         @endphp
                         @foreach($specs as $spec)
-                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 transition-colors duration-300">
                                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-0.5">{{ $spec['label'] }}</p>
                                 <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $spec['value'] }}</p>
                             </div>
@@ -114,7 +113,7 @@
                 </div>
 
                 <!-- Description -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                         <svg class="w-5 h-5" style="color: var(--tw-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -141,10 +140,10 @@
             <div class="lg:col-span-1">
                 <div class="lg:sticky lg:top-24">
                     <!-- Price Card -->
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-5">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-5 transition-colors duration-300">
                         <div>
                             <div class="flex items-baseline gap-1">
-                                <span class="text-4xl font-black" >₱{{ number_format($car->price_starts_at ?? 89, 2) }}</span>
+                                <span class="text-4xl font-black text-gray-900 dark:text-white">₱{{ number_format($car->price_starts_at ?? 89, 2) }}</span>
                                 <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">/ day</span>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Premium rate • No hidden fees</p>
@@ -184,7 +183,7 @@
                             Book This Vehicle
                         </button>
                         
-                        <div class="flex items-center gap-1.5 text-xs text-center text-gray-400 dark:text-gray-500">
+                        <div class="flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                             </svg>
@@ -207,10 +206,10 @@
 />
 
 <!-- Mobile Sticky Bottom Bar -->
-<div class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 p-4 lg:hidden z-40">
+<div class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 p-4 lg:hidden z-40 transition-colors duration-300">
     <div class="flex items-center justify-between max-w-7xl mx-auto">
         <div>
-            <span class="text-2xl font-black" style="color: var(--tw-primary);">₱{{ number_format($car->price_starts_at ?? 89, 2) }}</span>
+            <span class="text-2xl font-black text-gray-900 dark:text-white" style="color: var(--tw-primary);">₱{{ number_format($car->price_starts_at ?? 89, 2) }}</span>
             <span class="text-sm text-gray-500 dark:text-gray-400"> / day</span>
         </div>
         <button @click="bookingOpen = true" 
@@ -234,7 +233,7 @@
          x-transition:enter-end="opacity-100 scale-100"
          @click.away="show = false; $wire.showQRModal = false">
         
-        <div class="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden ">
+        <div class="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden transition-colors duration-300">
             <!-- Header -->
             <div class="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                 <div class="flex items-center justify-between">
@@ -299,7 +298,7 @@
                 
                 <!-- QR Code -->
                 @if($qrCodeData)
-                    <div class="inline-block p-4 bg-white rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <div class="inline-block p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
                         <img src="{{ $qrCodeData }}" 
                              alt="QR Code for {{ $qrCustomerName }}" 
                              class="w-48 h-48 object-contain"
@@ -327,11 +326,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     Download QR
-                </button>
-                
-                <button @click="show = false; $wire.showQRModal = false; window.location.reload();" 
-                        class="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition font-medium">
-                    View My Bookings →
                 </button>
             </div>
         </div>
@@ -362,7 +356,8 @@
         document.body.removeChild(link);
         
         setTimeout(function() {
-            window.location.href = '/';
+            const tenantSlug = '{{ session('tenant_slug') }}';
+            window.location.href = '/' + tenantSlug;
         }, 500);
     }
 </script>

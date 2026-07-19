@@ -34,20 +34,14 @@ class ClientLandingPage extends Component
         if (!$companyInfo) {
             abort(404);
         }
-
-        // Subscription checks
-        if(!$companyInfo->hasAddon('booking-pro')){
+        
+        if(!$companyInfo->hasProOrMasterSubscription() && !$companyInfo->hasActiveFreeSubscription())
+        {
             if (!$companyInfo->hasNonBasicPaidSubscription()) {
-                if (!$companyInfo->hasActiveFreeSubscription()) {
-                    return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
-                }else{
-                    return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
-                }
-            }else{
-                if(!$companyInfo->hasAddon('booking-pro')){
-                    // return redirect()->route('booking.wizard.v2',['tenant' => $tenant]);
-                }
+                abort(403, 'Service Not Available');
             }
+
+            return redirect()->route('booking.wizard',['tenant' => $tenant]);
         }
 
         $this->company = $companyInfo;
@@ -63,7 +57,6 @@ class ClientLandingPage extends Component
                 now()->addMinutes(5)
             );
         }
-
 
         // Set tenant in session for use in other controllers
         session(['tenant_id' => $companyInfo->id]);
@@ -136,7 +129,8 @@ class ClientLandingPage extends Component
     {
         $query = Car::with(['carType', 'images'])
             ->where('is_available', true)
-            ->where('company_id', $this->company->id);
+            ->where('company_id', $this->company->id)
+            ->whereNull('deleted_at'); // Exclude soft-deleted cars
 
         // Brand filter
         if ($this->selectedBrand !== 'All') {
@@ -236,10 +230,11 @@ class ClientLandingPage extends Component
 
     public function render()
     {
-        // Fetch fresh filter options
+        // Fetch fresh filter options - Exclude soft-deleted cars
         $allCars = Car::where('company_id', $this->company->id)
             ->with('carType')
             ->where('is_available', true)
+            ->whereNull('deleted_at') // Exclude soft-deleted cars
             ->get();
 
         $brands = $allCars->pluck('brand')

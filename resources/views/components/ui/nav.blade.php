@@ -20,8 +20,8 @@
                 KEYFLEET
             </a>
 
-            <!-- Desktop Navigation -->
-            <nav class="items-center hidden space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 lg:flex">
+            <!-- Desktop Navigation - Now visible on md and up (tablets) -->
+            <nav class="items-center hidden space-x-1 text-sm font-medium text-gray-700 dark:text-gray-300 md:flex">
                 <a href="/" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Home</a>
                 <a href="/blog" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Blog</a>
                 <a href="/#features" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Features</a>
@@ -31,7 +31,7 @@
             </nav>
 
             <!-- Right Side: Dark Mode Toggle & CTA -->
-            <div class="hidden lg:flex lg:items-center lg:gap-3">
+            <div class="hidden md:flex md:items-center md:gap-3">
                 <!-- Dark Mode Toggle -->
                 <button @click="darkMode = !darkMode" 
                         class="p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"

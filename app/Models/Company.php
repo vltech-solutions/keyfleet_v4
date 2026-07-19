@@ -171,6 +171,24 @@ class Company extends Model implements HasAvatar
         return $isNotExpired && $isPaid && $isBasicPlan;
     }
 
+    public function hasProOrMasterSubscription(): bool
+    {
+        $subscription = $this->subscription;
+
+        if (! $subscription || ! $subscription->planPrice || ! $subscription->plan) {
+            return false;
+        }
+
+        $isNotExpired = now()->lte($subscription->ends_at);
+        $isPaid = $subscription->planPrice->price > 0;
+
+        // Check if plan is DrivePro (15 cars) or FleetMaster (35 cars)
+        $planName = $subscription->plan->name ?? '';
+        $isProOrMaster = in_array($planName, ['DrivePro', 'FleetMaster']);
+
+        return $isNotExpired && $isPaid && $isProOrMaster;
+    }
+
     public function carLimitReached()
     {
         $carLimit = $this->plan()?->car_limit ?? 0;

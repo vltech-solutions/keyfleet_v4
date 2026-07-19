@@ -41,7 +41,7 @@
             background-image: linear-gradient(to right, #0047AB, #0a66c2);
         }
         .dark .keyfleet-gradient {
-            background-image: linear-gradient(to right, #1a3a6b, #0d4a7a);
+            background-image: linear-gradient(to right, #111827, #0a0f1a);
         }
         
         /* Force dark mode on body by default */

@@ -168,7 +168,7 @@
                     this.successMessage = '';
                 }
             } catch (error) {
-                this.errorMessage = 'An error occurred. Please try again.';
+                this.errorMessage = 'An error occurred. Please try again.'+JSON.stringify(error);
                 this.successMessage = '';
             }
         }
@@ -308,195 +308,207 @@
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     
+   <!-- Modern Hero Banner - Premium Design with Client Primary Color -->
+<section class="relative overflow-hidden min-h-[85vh] flex items-center"
+    @if($bannerUrl) 
+        style="background-image: url('{{ $bannerUrl }}'); background-size: cover; background-position: center; background-repeat: no-repeat;"
+    @endif
+>
+    <!-- Background Overlay for Banner Image -->
+    @if($bannerUrl)
+        <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40 z-0"></div>
+    @endif
     
-    <!-- Modern Hero Banner - Premium Design with Client Primary Color -->
-    <section class="relative overflow-hidden min-h-[85vh] flex items-center">
-        
-        <!-- Background with Premium Gradient and Abstract Shapes -->
+    <!-- Background with Premium Gradient and Abstract Shapes (Fallback) -->
+    @if(!$bannerUrl)
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
             <!-- Primary gradient background -->
             <div class="absolute inset-0" style="background: linear-gradient(135deg, var(--primary-color) 0%, #0f172a 60%, #0f172a 100%);"></div>
-            
-            <!-- Animated glowing orbs -->
-            <div class="absolute top-10 right-10 w-72 h-72 rounded-full blur-3xl animate-pulse" style="background: rgba(var(--primary-rgb), 0.2);"></div>
-            <div class="absolute bottom-10 left-10 w-96 h-96 rounded-full blur-3xl animate-pulse delay-700" style="background: rgba(var(--primary-rgb), 0.15);"></div>
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl" style="background: rgba(var(--primary-rgb), 0.08);"></div>
-            
-            <!-- Abstract geometric shapes -->
-            <div class="absolute top-20 left-20 opacity-10">
-                <svg class="w-64 h-64" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="50,0 100,50 50,100 0,50" stroke="white" stroke-width="0.5"/>
-                </svg>
-            </div>
-            <div class="absolute bottom-20 right-20 opacity-10">
-                <svg class="w-80 h-80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="10" y="10" width="80" height="80" stroke="white" stroke-width="0.5" transform="rotate(45 50 50)"/>
-                </svg>
-            </div>
-            
-            <!-- Subtle grid pattern -->
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA2KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')]">
-            </div>
-            
-            <!-- Bottom fade gradient -->
-            <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white dark:from-gray-900 to-transparent"></div>
         </div>
+    @endif
+    
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <!-- Animated glowing orbs -->
+        <div class="absolute top-10 right-10 w-72 h-72 rounded-full blur-3xl animate-pulse" style="background: rgba(var(--primary-rgb), 0.2);"></div>
+        <div class="absolute bottom-10 left-10 w-96 h-96 rounded-full blur-3xl animate-pulse delay-700" style="background: rgba(var(--primary-rgb), 0.15);"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl" style="background: rgba(var(--primary-rgb), 0.08);"></div>
+        
+        <!-- Abstract geometric shapes -->
+        <div class="absolute top-20 left-20 opacity-10">
+            <svg class="w-64 h-64" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="50,0 100,50 50,100 0,50" stroke="white" stroke-width="0.5"/>
+            </svg>
+        </div>
+        <div class="absolute bottom-20 right-20 opacity-10">
+            <svg class="w-80 h-80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="10" width="80" height="80" stroke="white" stroke-width="0.5" transform="rotate(45 50 50)"/>
+            </svg>
+        </div>
+        
+        <!-- Subtle grid pattern -->
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA2KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')]">
+        </div>
+        
+        <!-- Bottom fade gradient -->
+        <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/20 dark:from-gray-900/50 to-transparent"></div>
+    </div>
 
-        <div class="relative w-full max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-24 z-10">
-            
-            <div class="max-w-6xl mx-auto">
-                <!-- Centered Hero Content -->
-                <div class="text-center space-y-8">
-                    <!-- Status Badge -->
-                    <div class="mt-3 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 shadow-xl">
-                        <span class="relative flex h-3 w-3">
-                            <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
-                        </span>
-                        <span class="text-sm font-semibold text-white/90">{{ $totalCars ?? 240 }}+ Premium Vehicles Available</span>
-                    </div>
-
-                    <!-- Main Headline -->
-                    <h1 class="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[1.1] tracking-tight">
-                        <span style="background: linear-gradient(to right, white, rgba(255,255,255,0.7), white); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                            {{ $headerText ?? 'Drive Beyond' }}
-                        </span>
-                    </h1>
-                    
-                    <!-- Subheader -->
-                    <p class="text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed font-light">
-                        {{ $subheader ?? 'Unlock a fleet of premium cars. Effortless booking, zero hassle, and 24/7 support to keep you moving.' }}
-                    </p>
+    <div class="relative w-full max-w-[1440px] mx-auto px-6 md:px-12 py-16 md:py-24 z-10">
+        
+        <div class="max-w-6xl mx-auto">
+            <!-- Centered Hero Content -->
+            <div class="text-center space-y-8">
+                <!-- Status Badge -->
+                <div class="mt-3 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 shadow-xl">
+                    <span class="relative flex h-3 w-3">
+                        <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+                    </span>
+                    <span class="text-sm font-semibold text-white/90">{{ $totalCars ?? 240 }}+ Premium Vehicles Available</span>
                 </div>
 
-                <!-- Premium Search Card -->
-                <div class="max-w-5xl mx-auto mt-12">
-                    <div class="bg-white/10 backdrop-blur-2xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/20">
-                        
-                        <form wire:submit.prevent="searchCars" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <!-- Vehicle Type -->
-                            <div class="md:col-span-1">
-                                <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
-                                    Vehicle Type
-                                </label>
-                                <div class="relative">
-                                    <select wire:model="selectedVehicleType" 
-                                        class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent appearance-none transition-all">
-                                        <option value="All" class="text-gray-900">All Types</option>
-                                        @foreach($types as $type)
-                                            <option value="{{ $type }}" class="text-gray-900">{{ $type }}</option>
-                                        @endforeach
-                                    </select>
-                                    <svg class="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </div>
-                            </div>
+                <!-- Main Headline -->
+                <h1 class="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[1.1] tracking-tight">
+                    <span style="background: linear-gradient(to right, white, rgba(255,255,255,0.7), white); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        {{ $headerText ?? 'Drive Beyond' }}
+                    </span>
+                </h1>
+                
+                <!-- Subheader -->
+                <p class="text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed font-light">
+                    {{ $subheader ?? 'Unlock a fleet of premium cars. Effortless booking, zero hassle, and 24/7 support to keep you moving.' }}
+                </p>
+            </div>
 
-                            <!-- Start Date -->
-                            <div class="md:col-span-1">
-                                <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
-                                    Pick Up
-                                </label>
-                                <div class="relative">
-                                    <input type="date" 
-                                        wire:model="startDate" 
-                                        min="{{ Carbon\Carbon::now()->format('Y-m-d') }}"
-                                        class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent transition-all appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-6 [&::-webkit-calendar-picker-indicator]:h-6 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
-                                    <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
+            <!-- Premium Search Card -->
+            <div class="max-w-5xl mx-auto mt-12">
+                <div class="bg-white/10 backdrop-blur-2xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/20">
+                    
+                    <form wire:submit.prevent="searchCars" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Vehicle Type -->
+                        <div class="md:col-span-1">
+                            <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
+                                Vehicle Type
+                            </label>
+                            <div class="relative">
+                                <select wire:model="selectedVehicleType" 
+                                    class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent appearance-none transition-all">
+                                    <option value="All" class="text-gray-900">All Types</option>
+                                    @foreach($types as $type)
+                                        <option value="{{ $type }}" class="text-gray-900">{{ $type }}</option>
+                                    @endforeach
+                                </select>
+                                <svg class="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
                             </div>
+                        </div>
 
-                            <!-- End Date -->
-                            <div class="md:col-span-1">
-                                <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
-                                    Return
-                                </label>
-                                <div class="relative">
-                                    <input type="date" 
-                                        wire:model="endDate" 
-                                        min="{{ Carbon\Carbon::now()->addDay()->format('Y-m-d') }}"
-                                        class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent transition-all appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-6 [&::-webkit-calendar-picker-indicator]:h-6 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
-                                    <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
+                        <!-- Start Date -->
+                        <div class="md:col-span-1">
+                            <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
+                                Pick Up
+                            </label>
+                            <div class="relative">
+                                <input type="date" 
+                                    wire:model="startDate" 
+                                    min="{{ Carbon\Carbon::now()->format('Y-m-d') }}"
+                                    class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent transition-all appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-6 [&::-webkit-calendar-picker-indicator]:h-6 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
+                                <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
                             </div>
+                        </div>
 
-                            <!-- Search Button -->
-                            <div class="md:col-span-1">
-                                <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
-                                    &nbsp;
-                                </label>
-                                <button type="submit" 
-                                    class="w-full text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 text-base whitespace-nowrap"
-                                    style="background: var(--primary-color); box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.3); hover:box-shadow: 0 15px 40px rgba(var(--primary-rgb), 0.5);"
-                                    onmouseover="this.style.boxShadow='0 15px 40px rgba(var(--primary-rgb), 0.5)'"
-                                    onmouseout="this.style.boxShadow='0 10px 30px rgba(var(--primary-rgb), 0.3)'">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                    Find Cars
-                                </button>
+                        <!-- End Date -->
+                        <div class="md:col-span-1">
+                            <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
+                                Return
+                            </label>
+                            <div class="relative">
+                                <input type="date" 
+                                    wire:model="endDate" 
+                                    min="{{ Carbon\Carbon::now()->addDay()->format('Y-m-d') }}"
+                                    class="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent transition-all appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:w-6 [&::-webkit-calendar-picker-indicator]:h-6 [&::-webkit-calendar-picker-indicator]:cursor-pointer">
+                                <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
                             </div>
-                        </form>
+                        </div>
 
-                        <!-- Quick Filters -->
-                        <div class="mt-6 flex flex-wrap items-center justify-center gap-2 pt-4 border-t border-white/10">
-                            <span class="text-white/40 text-xs font-medium uppercase tracking-wider mr-2">Popular:</span>
-                            @php
-                                $popularTypes = ['SUV', 'Sedan', 'Luxury', 'Electric'];
-                            @endphp
-                            @foreach($popularTypes as $quickType)
-                                @if($types->contains($quickType))
-                                    <button type="button" 
-                                        wire:click="selectedVehicleType = '{{ $quickType }}'"
-                                        class="text-xs px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 hover:text-white transition-all border border-white/10 font-medium"
-                                        style="hover:background: var(--primary-color); hover:border-color: var(--primary-color);"
-                                        onmouseover="this.style.background='var(--primary-color)'; this.style.borderColor='var(--primary-color)';"
-                                        onmouseout="this.style.background=''; this.style.borderColor='';">
-                                        {{ $quickType }}
-                                    </button>
-                                @endif
-                            @endforeach
-                            <button type="button" 
-                                wire:click="selectedVehicleType = 'All'"
-                                class="text-xs px-4 py-2 rounded-full text-white transition-all border font-medium"
-                                style="background: rgba(var(--primary-rgb), 0.3); border-color: rgba(var(--primary-rgb), 0.4); hover:background: var(--primary-color);"
-                                onmouseover="this.style.background='var(--primary-color)'"
-                                onmouseout="this.style.background='rgba(var(--primary-rgb), 0.3)'">
-                                All Vehicles
+                        <!-- Search Button -->
+                        <div class="md:col-span-1">
+                            <label class="block text-white/80 text-xs font-semibold uppercase tracking-wider mb-2">
+                                &nbsp;
+                            </label>
+                            <button type="submit" 
+                                class="w-full text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 text-base whitespace-nowrap"
+                                style="background: var(--primary-color); box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.3); hover:box-shadow: 0 15px 40px rgba(var(--primary-rgb), 0.5);"
+                                onmouseover="this.style.boxShadow='0 15px 40px rgba(var(--primary-rgb), 0.5)'"
+                                onmouseout="this.style.boxShadow='0 10px 30px rgba(var(--primary-rgb), 0.3)'">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                Find Cars
                             </button>
                         </div>
-                    </div>
-                </div>
+                    </form>
 
-                <!-- Trust Indicators -->
-                <div class="flex flex-wrap items-center justify-center gap-8 mt-12">
-                    <div class="flex items-center gap-2 text-white/60">
-                        <svg class="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="text-sm font-medium">100% Secure Booking</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-white/60">
-                        <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="text-sm font-medium">24/7 Customer Support</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-white/60">
-                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                        </svg>
-                        <span class="text-sm font-medium">4.9/5 Customer Rating</span>
+                    <!-- Quick Filters -->
+                    <div class="mt-6 flex flex-wrap items-center justify-center gap-2 pt-4 border-t border-white/10">
+                        <span class="text-white/40 text-xs font-medium uppercase tracking-wider mr-2">Popular:</span>
+                        @php
+                            $popularTypes = ['SUV', 'Sedan', 'Luxury', 'Electric'];
+                        @endphp
+                        @foreach($popularTypes as $quickType)
+                            @if($types->contains($quickType))
+                                <button type="button" 
+                                    wire:click="selectedVehicleType = '{{ $quickType }}'"
+                                    class="text-xs px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 hover:text-white transition-all border border-white/10 font-medium"
+                                    style="hover:background: var(--primary-color); hover:border-color: var(--primary-color);"
+                                    onmouseover="this.style.background='var(--primary-color)'; this.style.borderColor='var(--primary-color)';"
+                                    onmouseout="this.style.background=''; this.style.borderColor='';">
+                                    {{ $quickType }}
+                                </button>
+                            @endif
+                        @endforeach
+                        <button type="button" 
+                            wire:click="selectedVehicleType = 'All'"
+                            class="text-xs px-4 py-2 rounded-full text-white transition-all border font-medium"
+                            style="background: rgba(var(--primary-rgb), 0.3); border-color: rgba(var(--primary-rgb), 0.4); hover:background: var(--primary-color);"
+                            onmouseover="this.style.background='var(--primary-color)'"
+                            onmouseout="this.style.background='rgba(var(--primary-rgb), 0.3)'">
+                            All Vehicles
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <!-- Trust Indicators -->
+            <div class="flex flex-wrap items-center justify-center gap-8 mt-12">
+                <div class="flex items-center gap-2 text-white/60">
+                    <svg class="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-medium">100% Secure Booking</span>
+                </div>
+                <div class="flex items-center gap-2 text-white/60">
+                    <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-sm font-medium">24/7 Customer Support</span>
+                </div>
+                <div class="flex items-center gap-2 text-white/60">
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    <span class="text-sm font-medium">4.9/5 Customer Rating</span>
+                </div>
+            </div>
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- Cars Section -->
     <section id="cars" class="py-12 md:py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
