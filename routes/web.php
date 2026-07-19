@@ -113,7 +113,8 @@ Route::domain($centralDomain)->group(function () {
             return view('pricing', compact('plans'));
         });
         Route::get('/terms-of-service', fn() => view('terms-of-service'));
-        Route::get('/privacy-policy', fn() => view('privacy-policy'));
+        Route::get('/privacy-policy', fn() => view('privacy-policy'))->name('privacy-policy');
+        Route::get('/cookies-policy', fn() => view('cookies-policy'))->name('cookies-policy');
         Route::get('/contact-us', fn() => view('contact-us'))->name('contact');
         Route::get('/testimonials', function () {
             $testimonials = Testimonial::latest()->get();
