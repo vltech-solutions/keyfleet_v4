@@ -197,6 +197,7 @@
 </main>
 
 <!-- Sliding Drawer -->
+
 <x-booking.sliding-drawer 
     :car="$car" 
     :busyDates="$busyDates" 

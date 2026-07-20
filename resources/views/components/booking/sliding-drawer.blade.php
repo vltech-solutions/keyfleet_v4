@@ -444,13 +444,26 @@
                                     .then((result) => {
                                         if (result === true) {
                                             $wire.saveBooking();
+                                            // Keep loading until bookingComplete becomes true
+                                            const checkComplete = setInterval(() => {
+                                                if ($wire.bookingComplete) {
+                                                    clearInterval(checkComplete);
+                                                    loading = false;
+                                                    // Close the drawer
+                                                    bookingOpen = false;
+                                                }
+                                            }, 500);
+                                        } else {
+                                            loading = false;
                                         }
                                     })
-                                    .finally(() => { loading = false; });
+                                    .catch(() => { 
+                                        loading = false; 
+                                    });
                             "
                             :disabled="loading"
                             class="flex-[2] h-14 rounded-xl text-white font-semibold shadow-lg hover:opacity-90 transition-all flex items-center justify-center disabled:opacity-50"
-                            :style="`background-color: var(--primary-color);` ">
+                            :style="`background-color: var(--primary-color);`">
 
                             <span x-show="!loading">Confirm Booking</span>
                             <span x-show="loading" class="flex items-center gap-2">

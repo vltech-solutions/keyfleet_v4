@@ -73,6 +73,8 @@ class ViewCarDetails extends Component implements HasForms
     public $isLoggedIn = false;
     public $loggedInCustomer = null;
 
+    public $bookingComplete = false;
+
     protected $rules = [
         'agreeToPrivacy' => 'accepted',
     ];
@@ -358,6 +360,7 @@ class ViewCarDetails extends Component implements HasForms
                 'name' => 'required',
                 'contact' => 'required|min:11|max:11',
                 'address' => 'required',
+                'source' => 'required'
             ]);
         } elseif ($step === 3) {
             $requirementTypes = RequirementTypes::whereIn('id', $this->enabledRequirements)->get();
@@ -545,30 +548,29 @@ class ViewCarDetails extends Component implements HasForms
             $this->qrRepeatToken = $customer->repeat_token;
             $this->qrIsNewCustomer = $isNewCustomer;
             $this->showQRModal = true;
+            $this->bookingComplete = true;
 
             //send sms
-            // $carDetails = Car::find($this->selectedCarId);
-            // $message = 'New reservation received! Car: '.$carDetails->name.', Reservation ID: '.$reservationNumber.'. Please check your account for details.';
-            // $notifNumber = $this->company?->notif_contact;
+            $carDetails = Car::find($this->selectedCarId);
+            $message = 'New reservation received! Car: '.$carDetails->name.', Reservation ID: '.$reservationNumber.'. Please check your account for details.';
+            $notifNumber = $this->company?->notif_contact;
 
-            // if (!empty($notifNumber)) {
-            //     try {
-            //         $response = SemaphoreService::send($notifNumber, $message);
-
-            //     } catch (\Throwable $e) {
-            //         \Log::warning('Company SMS sending failed', [
-            //             'number' => $notifNumber,
-            //             'error' => $e->getMessage(),
-            //         ]);
-            //     }
-            // }
+            if (env('SMS_ENABLED', false) && !empty($notifNumber)) {
+                try {
+                    $response = SemaphoreService::send($notifNumber, $message);
+                } catch (\Throwable $e) {
+                    \Log::warning('Company SMS sending failed', [
+                        'number' => $notifNumber,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             // Pushnotif
-            // $admins = $this->company->users; 
-
-            // foreach ($admins as $admin) {
-            //     $admin->notify(new NewReservationNotification($reservation));
-            // }
+            $admins = $this->company->users; 
+            foreach ($admins as $admin) {
+                $admin->notify(new NewReservationNotification($reservation));
+            }
 
             Notification::make()
                 ->title('Great!')
@@ -582,7 +584,7 @@ class ViewCarDetails extends Component implements HasForms
             DB::rollBack();
 
             \Log::error('Booking Save Failed: ' . $e->getMessage());
-
+            $this->bookingComplete = false;
             Notification::make()
                 ->title('Error!')
                 ->body('There was a problem saving your booking. Please try again.')
