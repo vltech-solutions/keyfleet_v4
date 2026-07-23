@@ -22,6 +22,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Intervention\Image\Facades\Image;
+use App\Support\PublicFileUrl;
 
 class ViewCarDetails extends Component implements HasForms
 {
@@ -88,18 +89,27 @@ class ViewCarDetails extends Component implements HasForms
         }
 
         // Subscription checks
-        if (!$companyInfo->hasAddon('booking-pro')) {
+        // if (!$companyInfo->hasAddon('booking-pro')) {
+        //     if (!$companyInfo->hasNonBasicPaidSubscription()) {
+        //         if (!$companyInfo->hasActiveFreeSubscription()) {
+        //             abort(403, 'The booking service is not available at the moment.');
+        //         } else {
+        //             return redirect()->route('booking.wizard', ['tenant' => $tenant]);
+        //         }
+        //     } else {
+        //         if (!$companyInfo->hasAddon('booking-pro')) {
+        //             // return redirect()->route('booking.wizard', ['tenant' => $tenant]);
+        //         }
+        //     }
+        // }
+
+        if(!$companyInfo->hasProOrMasterSubscription() && !$companyInfo->hasActiveFreeSubscription())
+        {
             if (!$companyInfo->hasNonBasicPaidSubscription()) {
-                if (!$companyInfo->hasActiveFreeSubscription()) {
-                    abort(403, 'The booking service is not available at the moment.');
-                } else {
-                    return redirect()->route('booking.wizard.v2', ['tenant' => $tenant]);
-                }
-            } else {
-                if (!$companyInfo->hasAddon('booking-pro')) {
-                    // return redirect()->route('booking.wizard.v2', ['tenant' => $tenant]);
-                }
+                abort(403, 'Service Not Available');
             }
+
+            return redirect()->route('booking.wizard',['tenant' => $tenant]);
         }
 
         $this->company = $companyInfo;
@@ -238,18 +248,23 @@ class ViewCarDetails extends Component implements HasForms
 
         if (!$value) return null;
 
-        if (!is_string($value)) {
+        // If it's a temporary uploaded file
+        if ($value instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
             try {
                 return $value->temporaryUrl();
             } catch (\Exception $e) {
-                return null;
+                // If Livewire's method fails, use our helper
+                return PublicFileUrl::url($value->getFilename());
             }
         }
 
-        return Storage::disk('s3')->temporaryUrl(
-            $value,
-            now()->addMinutes(10)
-        );
+        // If it's a stored path (string)
+        if (is_string($value)) {
+            // Use the helper for temporary URLs
+            return PublicFileUrl::temporaryUrl($value);
+        }
+
+        return null;
     }
 
     public function getEstimateProperty()

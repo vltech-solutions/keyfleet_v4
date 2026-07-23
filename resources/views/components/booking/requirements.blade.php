@@ -27,7 +27,41 @@
                 </p>
 
                 <div 
-                    x-data="{ isUploading: false, progress: 0 }"
+                    x-data="{
+                        isUploading: false, 
+                        progress: 0,
+                        previewUrl: null,
+                        fileName: null,
+                        fileId: {{ $req->id }},
+                        
+                        handleFileUpload(event) {
+                            const file = event.target.files[0];
+                            if (!file) return;
+                            
+                            // Create object URL for preview
+                            this.previewUrl = URL.createObjectURL(file);
+                            this.fileName = file.name;
+                            
+                            // Trigger Livewire upload
+                            @this.upload('requirements.' + this.fileId, file);
+                        },
+                        
+                        clearPreview() {
+                            if (this.previewUrl) {
+                                URL.revokeObjectURL(this.previewUrl);
+                                this.previewUrl = null;
+                                this.fileName = null;
+                            }
+                        }
+                    }"
+                    x-init="
+                        // Check if there's an existing preview from Livewire
+                        $watch('previewUrl', value => {
+                            if (value) {
+                                // Preview is set
+                            }
+                        });
+                    "
                     x-on:livewire-upload-start="isUploading = true"
                     x-on:livewire-upload-finish="isUploading = false"
                     x-on:livewire-upload-error="isUploading = false"
@@ -40,36 +74,64 @@
                             
                             <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                                 @php
-                                    $previewUrl = $this->getRequirementUrl($req->id);
+                                    $existingFile = $this->requirements[$req->id] ?? null;
+                                    $existingPreview = $this->getRequirementUrl($req->id);
                                 @endphp
 
-                                @if($previewUrl)
+                                <!-- Show preview if exists -->
+                                <template x-if="previewUrl">
                                     <div class="relative group">
-                                        <img src="{{ $previewUrl }}" class="h-24 w-40 object-cover rounded-lg mb-2 shadow-md border-2 border-blue-500">
+                                        <img :src="previewUrl" 
+                                             class="h-24 w-40 object-cover rounded-lg mb-2 shadow-md border-2 border-blue-500"
+                                             loading="lazy">
                                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
                                             <span class="text-white text-[10px] font-bold uppercase">Replace Photo</span>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
-                                        {{ is_string($this->requirements[$req->id] ?? null) ? 'Verified from Profile' : 'Newly Uploaded' }}
-                                    </p>
-                                @else
-                                    <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 px-4">
-                                        Click to upload <span class="font-bold text-blue-600">Image</span>
-                                    </p>
-                                @endif
+                                </template>
+
+                                <!-- Show existing uploaded file -->
+                                <template x-if="!previewUrl && '{{ $existingPreview }}'">
+                                    <div class="relative group">
+                                        <img src="{{ $existingPreview }}" 
+                                             class="h-24 w-40 object-cover rounded-lg mb-2 shadow-md border-2 border-blue-500"
+                                             onerror="this.onerror=null; this.src='{{ asset('images/placeholder-image.jpg') }}';"
+                                             loading="lazy">
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                            <span class="text-white text-[10px] font-bold uppercase">Replace Photo</span>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Show upload placeholder -->
+                                <template x-if="!previewUrl && !'{{ $existingPreview }}'">
+                                    <div>
+                                        <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 px-4">
+                                            Click to upload <span class="font-bold text-blue-600">Image</span>
+                                        </p>
+                                    </div>
+                                </template>
+                                
+                                <!-- File name display -->
+                                <template x-if="fileName">
+                                    <p class="text-xs text-green-600 dark:text-green-400 mt-1" x-text="fileName"></p>
+                                </template>
                             </div>
 
-                            <input type="file" wire:model="requirements.{{ $req->id }}" class="hidden" accept="image/*" />
+                            <input type="file" 
+                                   x-on:change="handleFileUpload" 
+                                   class="hidden" 
+                                   accept="image/*" />
                         </label>
                     </div>
 
+                    <!-- Upload progress -->
                     <div x-show="isUploading" class="absolute inset-0 bg-white/80 dark:bg-gray-900/80 rounded-2xl flex flex-col items-center justify-center z-10">
                         <div class="w-2/3 bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden">
-                            <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="`width: ${progress}%` text-white"></div>
+                            <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="`width: ${progress}%`"></div>
                         </div>
                         <span class="text-[10px] font-bold text-blue-600" x-text="progress + '%'"></span>
                     </div>
