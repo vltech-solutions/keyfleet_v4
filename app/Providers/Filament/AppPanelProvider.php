@@ -6,6 +6,7 @@ use App\Filament\Pages\Auth\RequestPasswordReset;
 use App\Filament\Pages\ContractBuilder;
 use Rmsramos\Activitylog\ActivitylogPlugin;
 
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\CompanyProfile;
 use App\Filament\Pages\ReferralDashboard;
 use App\Filament\Pages\BookingInspectionPage;
@@ -20,7 +21,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Navigation\NavigationItem;
-use Filament\Pages\Dashboard;
+// use Filament\Pages\Dashboard;
 use Filament\Widgets;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Colors\Color;
@@ -76,7 +77,8 @@ class AppPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                // Pages\Dashboard::class,
+                Dashboard::class,
                 SubscriptionOverview::class,
                 UserProfile::class,
                 BookingInspectionPage::class,
@@ -84,15 +86,15 @@ class AppPanelProvider extends PanelProvider
             ])
             // ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                BookingStatsWidget::class,
-                CarAvailability::class,
-                FinancialSummaryStats::class,
-                FundTypes::class,
-                UpcomingBookings::class,
-                FinancialGraph::class,
-                BookingGraph::class,
-                BookingSources::class,
-                TopBookedCarsChart::class
+                // BookingStatsWidget::class,
+                // CarAvailability::class,
+                // FinancialSummaryStats::class,
+                // FundTypes::class,
+                // UpcomingBookings::class,
+                // FinancialGraph::class,
+                // BookingGraph::class,
+                // BookingSources::class,
+                // TopBookedCarsChart::class
             ])
             // ->spa()
             // ->spaUrlExceptions(fn (): array => [
