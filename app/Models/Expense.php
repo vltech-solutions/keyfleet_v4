@@ -15,7 +15,7 @@ class Expense extends Model
         'amount',
         'deduct_to_fund',
         'other_payment_type',
-        'fund_id',
+        'fund_type_id',  // Changed from fund_id
         'company_id',
     ];
 
@@ -66,7 +66,7 @@ class Expense extends Model
 
         $fund = $this->fundType;
         if ($fund) {
-            $fund->balance = $fund->payments()->sum('amount') - $fund->expenses()->sum('amount');
+            $fund->balance = $fund->payments()->sum('amount') - $fund->expenses()->where('deduct_to_fund', true)->sum('amount');
             $fund->save();
         }
     }

@@ -33,6 +33,10 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
     public ?string $endDate = null;
     public string $partnerId = 'all';
 
+    // Pagination for car breakdown
+    public int $carPage = 1;
+    public int $carPerPage = 10;
+
     public static function getNavigationGroup(): ?string
     {
         return 'Reports';
@@ -48,13 +52,26 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
         return 3;
     }
 
-    protected function isTablePaginationEnabled(): bool
+    // These methods must be public
+    public function isTablePaginationEnabled(): bool
     {
-        return false;
+        return true;
     }
 
-    // protected static ?string $navigationParentItem = 'Reports';
+    public function getTableRecordsPerPage(): int
+    {
+        return 10;
+    }
 
+    public function getTableDefaultSortColumn(): ?string
+    {
+        return 'name';
+    }
+
+    public function getTableDefaultSortDirection(): ?string
+    {
+        return 'asc';
+    }
 
     public function mount(): void
     {
@@ -65,7 +82,7 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
     {
         $query = Booking::whereHas('car.partner')
             ->where('balance', 0)
-            ->where('status','approved')
+            ->where('status', 'approved')
             ->whereNotNull('partner_commission')
             ->whereNotNull('company_earnings');
 
@@ -89,7 +106,7 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
             ->with([
                 'cars.bookings' => fn ($q) =>
                     $q->where('balance', 0)
-                    ->where('status','approved')
+                    ->where('status', 'approved')
                     ->whereNotNull('partner_commission')
                     ->whereNotNull('company_earnings')
                     ->when($this->startDate && $this->endDate, fn ($q) =>
@@ -101,32 +118,40 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
     protected function getTableColumns(): array
     {
         return [
-            TextColumn::make('name')->label('Partner'),
+            TextColumn::make('name')
+                ->label('Partner')
+                ->searchable()
+                ->sortable(),
 
             TextColumn::make('cars_count')
                 ->label('Cars Count')
-                ->getStateUsing(fn (Partners $record) => $record->cars->count()),
+                ->getStateUsing(fn (Partners $record) => $record->cars->count())
+                ->sortable(),
 
             TextColumn::make('bookings_count')
                 ->label('Booking Count')
-                ->getStateUsing(fn (Partners $record) => $this->getPartnerBookings($record)->count()),
+                ->getStateUsing(fn (Partners $record) => $this->getPartnerBookings($record)->count())
+                ->sortable(),
 
             TextColumn::make('total_revenue')
                 ->label('Total Revenue')
                 ->getStateUsing(fn (Partners $record) => $this->getPartnerRevenue($record))
-                ->money('PHP', true),
+                ->money('PHP', true)
+                ->sortable(),
 
             TextColumn::make('partner_income')
                 ->label('Partner Income')
                 ->getStateUsing(fn (Partners $record) =>
                     $this->getPartnerValue($record, 'partner_commission')
                 )
-                ->money('PHP', true),
+                ->money('PHP', true)
+                ->sortable(),
 
             TextColumn::make('company_cut')
                 ->label('Your Commission')
                 ->getStateUsing(fn (Partners $record) => $this->getPartnerValue($record, 'company_earnings'))
-                ->money('PHP', true),
+                ->money('PHP', true)
+                ->sortable(),
         ];
     }
 
@@ -151,7 +176,7 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
             ->whereNotNull('partner_id')
             ->whereHas('bookings', function ($q) {
                 $q->where('balance', 0)
-                    ->where('status','approved')
+                    ->where('status', 'approved')
                     ->whereNotNull('partner_commission')
                     ->whereNotNull('company_earnings');
                 if ($this->startDate && $this->endDate) {
@@ -165,7 +190,7 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
 
         return $query->with(['partner', 'bookings' => function ($q) {
             $q->where('balance', 0)
-                ->where('status','approved')
+                ->where('status', 'approved')
                 ->whereNotNull('partner_commission')
                 ->whereNotNull('company_earnings');
             if ($this->startDate && $this->endDate) {
@@ -174,12 +199,38 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
         }])->get();
     }
 
+    // Get paginated car breakdown
+    public function getPaginatedCarBreakdownProperty()
+    {
+        $cars = $this->carBreakdown;
+        $total = $cars->count();
+        $items = $cars->slice(($this->carPage - 1) * $this->carPerPage, $this->carPerPage)->values();
+        
+        return (object) [
+            'items' => $items,
+            'total' => $total,
+            'page' => $this->carPage,
+            'perPage' => $this->carPerPage,
+            'lastPage' => ceil($total / $this->carPerPage),
+        ];
+    }
+
+    public function updatedCarPage()
+    {
+        // Just refresh the view
+    }
+
+    public function updatedCarPerPage()
+    {
+        $this->carPage = 1;
+    }
 
     public function updated($propertyName): void
     {
         if (in_array($propertyName, ['startDate', 'endDate', 'partnerId'])) {
             $this->computeSummaryValues();
             $this->resetTable();
+            $this->carPage = 1;
         }
     }
 
@@ -189,26 +240,27 @@ class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
             Section::make()
                 ->schema([
                     Grid::make()->schema([
-                            Select::make('partnerId')
-                                ->label('Partner')
-                                ->options(['all' => 'All Partners'] + Partners::pluck('name', 'id')->toArray())
-                                ->default('all')
-                                ->reactive()
-                                ->columnSpan(4),
+                        Select::make('partnerId')
+                            ->label('Partner')
+                            ->options(['all' => 'All Partners'] + Partners::pluck('name', 'id')->toArray())
+                            ->default('all')
+                            ->searchable()
+                            ->reactive()
+                            ->columnSpan(4),
 
-                            DatePicker::make('startDate')
-                                ->label('Start Date')
-                                ->reactive()
-                                ->nullable()
-                                ->columnSpan(4),
+                        DatePicker::make('startDate')
+                            ->label('Start Date')
+                            ->reactive()
+                            ->nullable()
+                            ->columnSpan(4),
 
-                            DatePicker::make('endDate')
-                                ->label('End Date')
-                                ->reactive()
-                                ->nullable()
-                                ->columnSpan(4),
-                        ])
-                        ->columns(12),
+                        DatePicker::make('endDate')
+                            ->label('End Date')
+                            ->reactive()
+                            ->nullable()
+                            ->columnSpan(4),
+                    ])
+                    ->columns(12),
                 ]),
         ];
     }
