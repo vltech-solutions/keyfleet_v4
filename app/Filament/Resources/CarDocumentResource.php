@@ -21,7 +21,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class CarDocumentResource extends Resource
+class CarDocumentResource extends TenantResource
 {
     protected static ?string $model = CarDocument::class;
 

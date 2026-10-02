@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class CustomerRequirement extends Model
 {
+    use TracksUserAttribution;
+
     use HasFactory;
 
     protected $table = 'customer_requirements';

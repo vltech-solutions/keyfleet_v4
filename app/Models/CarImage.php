@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 class CarImage extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'car_id',
         'image_type',

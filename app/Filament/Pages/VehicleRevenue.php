@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use App\Models\Car;
 use App\Models\Booking;
 use Filament\Pages\Page;
@@ -16,6 +18,8 @@ use Filament\Tables\Concerns\InteractsWithTable;
 
 class VehicleRevenue extends Page implements HasTable
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';

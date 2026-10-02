@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use Filament\Pages\Page;
 use App\Models\Company;
 use App\Models\Plan;
@@ -9,6 +11,8 @@ use Filament\Facades\Filament;
 
 class ReferralDashboard extends Page
 {
+    use AuthorizesTenantPage;
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static string $view = 'filament.pages.referral-dashboard';
     protected static ?string $title = 'My Referral Program';

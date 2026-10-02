@@ -22,16 +22,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // KeyFleet resources
 
     // Bookings
-    Route::group(['prefix' => 'bookings'], function () {
+    Route::group(['prefix' => 'bookings', 'middleware' => 'permission:bookings.view'], function () {
         Route::get('/', [BookingController::class, 'index']);
         Route::get('/{id}', [BookingController::class, 'show']);
     });
 
     // Cars
     Route::group(['prefix' => 'cars'], function () {
-      Route::post('/', [CarController::class, 'store']);
-      Route::get('/', [CarController::class, 'index']);
-      Route::get('/{id}', [CarController::class, 'show']);
+      Route::post('/', [CarController::class, 'store'])->middleware('permission:cars.create');
+      Route::get('/', [CarController::class, 'index'])->middleware('permission:cars.view');
+      Route::get('/{id}', [CarController::class, 'show'])->middleware('permission:cars.view');
   });
 
 });

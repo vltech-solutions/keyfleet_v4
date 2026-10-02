@@ -11,7 +11,7 @@ class CarController extends Controller
 {
     public function index(Request $request){
         $user = $request->user();
-        $companyId = $user->companies()->first()?->id;
+        $companyId = $user->company_id;
 
         if (! $companyId) {
             return response()->json([
@@ -32,7 +32,10 @@ class CarController extends Controller
     }
 
     public function show($id){
-        $car = Car::with(['partner'])->find($id);
+        abort_unless(request()->user()?->hasPermission('cars.view'), 403);
+        $car = Car::with(['partner'])
+            ->where('company_id', request()->user()->company_id)
+            ->findOrFail($id);
         return response()->json([
             'status' => 'success',
             'data' => $car,
@@ -52,7 +55,7 @@ class CarController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        $companyId = $user->companies()->first()?->id;
+        $companyId = $user->company_id;
     
         if (! $companyId) {
             return response()->json([

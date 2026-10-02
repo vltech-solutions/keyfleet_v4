@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use App\Models\Car;
 use App\Models\Booking;
 use Carbon\Carbon;
@@ -24,6 +26,8 @@ use Filament\Support\RawJs;
 
 class FleetUtilizationReport extends Page implements HasForms, HasTable
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithForms, InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
 {
-   protected $fillable = ['name', 'car_limit', 'price', 'billing_cycle', 'is_active','referral_reward_days'];
+   protected $fillable = ['name', 'car_limit', 'user_limit', 'price', 'billing_cycle', 'is_active','referral_reward_days'];
 
     public function subscriptions(): HasMany
     {

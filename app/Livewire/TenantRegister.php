@@ -73,13 +73,17 @@ class TenantRegister extends Component implements HasForms
             'advance_booking_form' => true
         ]);
 
+        $ownerRole = app(\App\Services\TenantUserService::class)->ownerRole($tenant);
+
         $user = User::create([
             'name' => $validated['data']['user']['name'],
             'email' => $validated['data']['user']['email'],
             'password' => Hash::make($validated['data']['user']['password']),
+            'company_id' => $tenant->id,
+            'role_id' => $ownerRole->id,
         ]);
 
-        $tenant->users()->attach($user->id);
+        $user->companies()->attach($tenant->id);
 
         $freeTrialPrice = PlanPrice::whereHas('plan', function ($query) {
             $query->where('name', 'FREE TRIAL - Beta');

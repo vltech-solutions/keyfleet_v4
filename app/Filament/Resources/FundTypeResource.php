@@ -17,7 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Illuminate\Database\Eloquent\Builder;
 
-class FundTypeResource extends Resource
+class FundTypeResource extends TenantResource
 {
     protected static ?string $model = FundType::class;
 

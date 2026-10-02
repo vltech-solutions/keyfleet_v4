@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Car extends Model
 {
+    use TracksUserAttribution;
+
     use SoftDeletes;
     protected $fillable = [
         'name',
@@ -189,7 +193,7 @@ class Car extends Model
 
     protected static function clearCarCache()
     {
-        $tenant = auth()->user()->companies()->first();
+        $tenant = auth()->user()->company;
         if ($tenant) {
             $cacheKey = 'events_for_car_' . $tenant->id;
             Cache::forget($cacheKey);

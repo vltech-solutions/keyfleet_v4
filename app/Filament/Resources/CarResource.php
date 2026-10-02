@@ -41,7 +41,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 
-class CarResource extends Resource
+class CarResource extends TenantResource
 {
     protected static ?string $model = Car::class;
 
@@ -153,7 +153,7 @@ class CarResource extends Resource
                 ]),
         ];
 
-        $company = auth()->user()->companies()->first();
+        $company = auth()->user()->company;
 
         // if($company->hasAddon('booking-pro')){
             $tabs[] = Tab::make('Images')

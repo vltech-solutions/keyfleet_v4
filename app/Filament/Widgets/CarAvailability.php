@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Actions\Action;
 use Filament\Widgets\Widget;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -17,6 +19,8 @@ use App\Models\CarType;
 
 class CarAvailability extends Widget implements HasForms
 {
+    use AuthorizesTenantWidget;
+
     use InteractsWithForms;
     protected static string $view = 'filament.widgets.car-availability';
     protected int | string | array $columnSpan = [

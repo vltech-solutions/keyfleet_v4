@@ -30,6 +30,11 @@ class PlanResource extends Resource
                 TextInput::make('car_limit')
                     ->numeric()
                     ->required(),
+                TextInput::make('user_limit')
+                    ->label('Active User Limit')
+                    ->numeric()
+                    ->minValue(1)
+                    ->helperText('Leave blank for an unlimited Custom/Enterprise plan.'),
                 Toggle::make('is_active'),
 
                 TextInput::make('referral_reward_days')
@@ -66,13 +71,16 @@ class PlanResource extends Resource
 
     public static function table(Table $table): Table
     {
+
         return $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Plan')
                     ->searchable(),
                 TextColumn::make('car_limit')
-                    ->label('Car Limit'),
+                    ->label('Car Limit'),                TextColumn::make('user_limit')
+                    ->label('User Limit')
+                    ->formatStateUsing(fn ($state) => $state ?: 'Unlimited'),
                 TextColumn::make('prices')
                     ->label('Billing Cycles')
                     ->formatStateUsing(function ($record) {

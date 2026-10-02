@@ -2,12 +2,16 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\ChartWidget;
 use App\Models\Car;
 use Carbon\Carbon;
 
 class TopBookedCarsChart extends ChartWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?string $heading = 'Top 5 Cars by Total Revenue';
     protected int | string | array $columnSpan = [
         'md' => 2,

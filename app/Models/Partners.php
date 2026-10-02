@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class Partners extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'name', 'email', 'contact_number', 'address',
         'commission_type', 'commission_value', 'commission_base',

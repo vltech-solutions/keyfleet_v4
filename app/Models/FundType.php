@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +13,8 @@ use Filament\Notifications\Notification;
 
 class FundType extends Model
 {
+    use TracksUserAttribution;
+
     // use LogsActivity;
 
     protected $fillable = [

@@ -2,11 +2,15 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\ChartWidget;
 use App\Models\Booking;
 
 class BookingGraph extends ChartWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?string $heading = 'Yearly Booking Chart';
 
     protected static ?int $sort = 5;

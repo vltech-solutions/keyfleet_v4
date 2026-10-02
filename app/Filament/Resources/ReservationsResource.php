@@ -18,7 +18,7 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\Layout\Split;
 use Illuminate\Database\Eloquent\Builder;
 
-class ReservationsResource extends Resource
+class ReservationsResource extends TenantResource
 {
     protected static ?string $model = Reservation::class;
 

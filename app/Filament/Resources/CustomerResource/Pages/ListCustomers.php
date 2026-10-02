@@ -25,6 +25,7 @@ class ListCustomers extends ListRecords
                     ->modalWidth('md'),
 
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('customers.export') ?? false)
                     ->label('Export')
                     ->button() 
                     ->color('gray') 
@@ -35,6 +36,7 @@ class ListCustomers extends ListRecords
                     }),
             ] : [
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('customers.export') ?? false)
                     ->label('Export')
                     ->button() 
                     ->color('gray') 

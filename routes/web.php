@@ -36,7 +36,7 @@ $centralDomain = config('app.domain');
 Route::get('/pwa-login', function () {
     if (Auth::check()) {
         $user = Auth::user();
-        $company = $user->companies()->first();
+        $company = $user->company;
         return $company ? redirect('/app/' . $company->slug) : redirect('/app');
     }
     return redirect('/app/login');
@@ -216,9 +216,11 @@ Route::get('auth/google/callback', [GoogleController::class, 'callback']);
 
 // Contract Preview
 Route::get('/preview-contract/{booking}', function (Booking $booking) {
-    $company = auth()->user()->companies()->first();
+    abort_unless(auth()->user()->hasPermission('bookings.print'), 403);
+    $company = auth()->user()->company;
     if (!$company) abort(403, 'Company not found.');
 
+    abort_unless((int) $booking->company_id === (int) $company->id, 404);
     $booking->load('car');
     $cachedTemplate = Cache::get("contract_template_{$company->id}");
     $body = $cachedTemplate 
@@ -235,19 +237,25 @@ Route::get('/preview-contract/{booking}', function (Booking $booking) {
 
 // Invoice Download (Authenticated)
 Route::get('/invoices/{id}/download', function ($id) {
-    $booking = Booking::with('car')->findOrFail($id);
+    $booking = Booking::with('car')
+        ->where('company_id', auth()->user()->company_id)
+        ->findOrFail($id);
     $company = Company::findOrFail($booking->company_id);
+    abort_unless(auth()->user()->hasPermission('bookings.print'), 403);
+
     $invoiceBlade = explode('.', $company->invoice_template)[0];
 
     return Pdf::loadView('invoice.' . $invoiceBlade, [
         'invoiceData' => ['company' => $company, 'booking' => $booking]
     ])->download("invoice-{$booking->id}.pdf");
-})->name('invoices.download');
+})->middleware(['auth', 'permission:bookings.print'])->name('invoices.download');
 
 // Invoice Download (Public - for tenants)
 Route::get('/download-invoice/{tenant}/{booking}', function ($tenantId, $bookingId) {
     $company = Company::findOrFail($tenantId);
-    $booking = Booking::with('car')->findOrFail($bookingId);
+    $booking = Booking::with('car')
+        ->where('company_id', $company->id)
+        ->findOrFail($bookingId);
     $invoiceBlade = explode('.', $company->invoice_template)[0];
 
     return Pdf::loadView('invoice.' . $invoiceBlade, [
@@ -258,7 +266,7 @@ Route::get('/download-invoice/{tenant}/{booking}', function ($tenantId, $booking
 // Inspection Report Print
 Route::get('/inspection-print/{inspection}', [InspectionReportController::class, 'download'])
     ->name('inspection.report.print')
-    ->middleware(['signed', 'auth']);
+    ->middleware(['signed', 'auth', 'permission:inspections.print']);
 
 /*
 |--------------------------------------------------------------------------

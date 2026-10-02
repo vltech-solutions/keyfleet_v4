@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 
 class Contract extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'company_id',
         'title',

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -11,6 +13,8 @@ use Filament\Tables\Actions\Action;
 
 class FundTypes extends BaseWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?int $sort = 3;
 
     protected static ?string $heading = 'Funds';

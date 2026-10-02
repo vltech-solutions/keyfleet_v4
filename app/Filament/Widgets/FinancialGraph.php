@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\ChartWidget;
 use App\Models\Booking;
 use App\Models\BookingPayments;
@@ -9,6 +11,8 @@ use App\Models\Expense;
 
 class FinancialGraph extends ChartWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?string $heading = 'Yearly Financial Chart';
 
     protected static ?int $sort = 2;

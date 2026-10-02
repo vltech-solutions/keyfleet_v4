@@ -138,7 +138,7 @@ class ViewBooking extends Page
   
     public function getContractBody()
     {
-        $company = auth()->user()->companies()->first();
+        $company = auth()->user()->company;
         $booking = $this->record;
 
         $cachedTemplate = Cache::get("contract_template_{$company->id}");
@@ -229,7 +229,7 @@ class ViewBooking extends Page
               ->modalWidth('4xl') // Malapad para sa dokumento
               ->modalSubmitAction(false) // Alisin ang save button
               ->modalCancelAction(false)
-              ->visible(fn () => $this->record && auth()->user()->companies()->first()?->contract)
+              ->visible(fn () => $this->record && auth()->user()->company?->contract)
               ->modalContent(fn () => view('contracts.preview-modal', [
                   'booking' => $this->record,
                   'body' => $this->getContractBody(), // Gawa ka ng method sa class para makuha ang body

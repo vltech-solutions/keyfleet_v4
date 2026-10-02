@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Filament\Facades\Filament;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +13,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Customer extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'customer_name',
         'address',

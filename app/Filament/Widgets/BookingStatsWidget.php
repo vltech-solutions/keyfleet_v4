@@ -2,11 +2,15 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\Widget;
 use App\Models\Booking;
 
 class BookingStatsWidget extends Widget
 {
+    use AuthorizesTenantWidget;
+
     protected static string $view = 'filament.widgets.booking-summary-stats';
     
     protected int | string | array $columnSpan = [

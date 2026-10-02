@@ -2,12 +2,16 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\ChartWidget;
 use App\Models\Booking;
 use Illuminate\Support\Str;
 
 class BookingSources extends ChartWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?string $heading = 'Booking Source Analysis';
 
     protected static ?int $sort = 6;

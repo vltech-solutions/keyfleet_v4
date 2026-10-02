@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use App\Models\BookingInspection;
 use Filament\Pages\Page;
 use Filament\Infolists\Infolist;
@@ -18,6 +20,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ViewInspectionPage extends Page implements HasInfolists
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithInfolists;
 
     protected static string $view = 'filament.pages.view-inspection-page';

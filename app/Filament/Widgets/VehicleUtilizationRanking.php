@@ -2,12 +2,16 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\ChartWidget;
 use App\Models\Vehicle;
 use App\Models\Booking;
 
 class VehicleUtilizationRanking extends ChartWidget
 {
+    use AuthorizesTenantWidget;
+
     protected static ?string $heading = 'Vehicle Utilization Ranking';
 
     protected function getType(): string

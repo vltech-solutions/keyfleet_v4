@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use App\Models\BookingPayments;
 use App\Models\Expense;
 use App\Models\FundType;
@@ -17,6 +19,8 @@ use Carbon\Carbon;
 
 class IncomeFlowReport extends Page
 {
+    use AuthorizesTenantPage;
+
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
     protected static string $view = 'filament.pages.income-flow-report';
 

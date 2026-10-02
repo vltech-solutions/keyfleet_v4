@@ -13,7 +13,7 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $companyId = $user->companies()->first()?->id;
+        $companyId = $user->company_id;
 
         if (! $companyId) {
             return response()->json([
@@ -50,7 +50,10 @@ class BookingController extends Controller
     }
 
     public function show($id){
-        $booking = Booking::with(['car', 'payments'])->find($id);
+        abort_unless(request()->user()?->hasPermission('bookings.view'), 403);
+        $booking = Booking::with(['car', 'payments'])
+            ->where('company_id', request()->user()->company_id)
+            ->findOrFail($id);
         return response()->json([
             'status' => 'success',
             'data' => $booking,

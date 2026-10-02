@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 
 class BookingPayments extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'booking_id',
         'fund_type_id',

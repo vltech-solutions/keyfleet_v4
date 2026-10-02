@@ -15,7 +15,7 @@ use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class SourceResource extends Resource
+class SourceResource extends TenantResource
 {
     protected static ?string $model = Source::class;
 

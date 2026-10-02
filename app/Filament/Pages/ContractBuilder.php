@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use Filament\Pages\Page;
 
 use App\Models\Contract;
@@ -14,6 +16,8 @@ use Illuminate\Support\Facades\Cache;
 
 class ContractBuilder extends Page implements HasForms
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithForms;
     public ?string $editor = '';
 

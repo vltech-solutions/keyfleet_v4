@@ -58,7 +58,7 @@ use App\Filament\Resources\BookingResource\Pages\ViewBooking;
 use Filament\Forms\Components\ViewField;
 use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
-class BookingResource extends Resource
+class BookingResource extends TenantResource
 {
     protected static ?string $model = Booking::class;
 
@@ -105,7 +105,7 @@ class BookingResource extends Resource
 
             $previewUrl = route('contract.preview', ['booking' => $get('id')]);
 
-            $company = auth()->user()->companies()->first();
+            $company = auth()->user()->company;
             if(!$company->contract) {
                 return [];   
             }
@@ -768,6 +768,7 @@ class BookingResource extends Resource
     public static function table(Table $table): Table
     {   
         $importAction = Action::make('importFromExcel')
+            ->visible(fn () => auth()->user()?->hasPermission('bookings.import') ?? false)
             ->label('Import')
             ->button() 
             ->color('gray') 
@@ -823,6 +824,7 @@ class BookingResource extends Resource
                     ->icon('heroicon-s-document-arrow-down')
                     ->action(fn () => Excel::download(new BookingTemplateExport, 'booking-template.xlsx')),
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')
@@ -837,6 +839,7 @@ class BookingResource extends Resource
                     }),
             ] : [
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')
@@ -858,7 +861,7 @@ class BookingResource extends Resource
                         ->label('Add Payment')
                         ->icon('heroicon-o-currency-dollar')
                         ->color('success')
-                        ->visible(fn ($record) => $record->status !== 'cancelled')
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled')
                         ->form([
                             Forms\Components\Select::make('fund_type_id')
                                 ->label('Fund')
@@ -904,6 +907,7 @@ class BookingResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading('Cancel Booking')
                         ->visible(fn ($record) => 
+                            (auth()->user()?->hasPermission('bookings.cancel') ?? false) &&
                             $record->status !== 'cancelled' &&
                             $record->end_datetime > now()
                         )
@@ -922,9 +926,9 @@ class BookingResource extends Resource
                         ->icon('heroicon-o-eye')
                         ->url(fn ($record) => ViewBooking::getUrl(['record' => $record->id])),
                     Tables\Actions\EditAction::make()->color('gray')
-                        ->visible(fn ($record) => $record->status !== 'cancelled'),
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.update') ?? false) && $record->status !== 'cancelled'),
                     Tables\Actions\DeleteAction::make()->color('gray')
-                        ->visible(fn ($record) => $record->status !== 'cancelled'),
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.delete') ?? false) && $record->status !== 'cancelled'),
             ] : [];
         
         // Define columns for desktop
@@ -1124,6 +1128,16 @@ class BookingResource extends Resource
                 ...$mobileColumns,
                 // Desktop view (visible only on md screens and up)
                 ...$desktopColumns,
+                TextColumn::make('creator.name')
+                    ->label('Created By')
+                    ->description(fn ($record) => $record->creator && ! $record->creator->is_active ? 'Inactive' : null)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visibleFrom('md'),
+                TextColumn::make('updater.name')
+                    ->label('Last Updated By')
+                    ->description(fn ($record) => $record->updated_at?->format('M d, Y h:i A'))
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visibleFrom('md'),
             ])
             ->filters([
                 SelectFilter::make('partner_filter')
@@ -1215,6 +1229,7 @@ class BookingResource extends Resource
     // public static function table(Table $table): Table
     // {   
     //     $importAction = Action::make('importFromExcel')
+//            ->visible(fn () => auth()->user()?->hasPermission('bookings.import') ?? false)
     //         ->label('Import')
     //         ->button() 
     //         ->color('gray') 
@@ -1270,6 +1285,7 @@ class BookingResource extends Resource
     //                 ->icon('heroicon-s-document-arrow-down')
     //                 ->action(fn () => Excel::download(new BookingTemplateExport, 'booking-template.xlsx')),
     //             Action::make('exportToExcel')
+    // ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
     //                 ->label('Export')
     //                 ->button()
     //                 ->color('gray')
@@ -1281,6 +1297,7 @@ class BookingResource extends Resource
     //                 }),
     //         ] : [
     //             Action::make('exportToExcel')
+    // ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
     //                 ->label('Export')
     //                 ->button()
     //                 ->color('gray')
@@ -1299,7 +1316,7 @@ class BookingResource extends Resource
     //                     ->label('Add Payment')
     //                     ->icon('heroicon-o-currency-dollar')
     //                     ->color('success')
-    //                     ->visible(fn ($record) => $record->status !== 'cancelled')
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled')
     //                     ->form([
     //                         Forms\Components\Select::make('fund_type_id')
     //                             ->label('Fund')
@@ -1355,9 +1372,9 @@ class BookingResource extends Resource
     //                     ->icon('heroicon-o-eye')
     //                     ->url(fn ($record) => ViewBooking::getUrl(['record' => $record->id])),
     //             Tables\Actions\EditAction::make()->color('gray')
-    //                     ->visible(fn ($record) => $record->status !== 'cancelled'),
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled'),
     //             Tables\Actions\DeleteAction::make()->color('gray')
-    //                     ->visible(fn ($record) => $record->status !== 'cancelled'),
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled'),
     //         ] : [];
         
     //     if ($company && ($company->hasNonBasicPaidSubscription() || $company->hasActiveFreeSubscription())) {

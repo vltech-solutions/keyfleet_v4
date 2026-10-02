@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use Filament\Pages\Page;
 use App\Models\Booking;
 use App\Models\BookingInspection;
@@ -19,6 +21,8 @@ use Livewire\WithFileUploads;
 
 class BookingInspectionPage extends Page implements HasForms, HasActions
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithForms, InteractsWithActions, WithFileUploads;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';

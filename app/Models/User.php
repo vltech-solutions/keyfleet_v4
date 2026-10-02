@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 use Laravel\Sanctum\HasApiTokens;
 
@@ -31,7 +32,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         'name',
         'email',
         'password',
-        'google_token'
+        'google_token',
+        'company_id',
+        'role_id',
+        'is_active',
     ];
 
     /**
@@ -54,6 +58,9 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 
@@ -62,39 +69,80 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->belongsToMany(Company::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
     public function getTenants(Panel $panel): Collection
     {
-        return $this->companies;
+        return $this->company ? collect([$this->company]) : collect();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
-        return $this->companies()->whereKey($tenant)->exists();
+        return $tenant instanceof Company && (int) $this->company_id === (int) $tenant->getKey();
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'admin') {
-            return $this->is_admin;
+            return $this->is_admin && $this->is_active;
         }
 
-        return true;
+        return $this->is_active && $this->company_id !== null && $this->role_id !== null;
     }
 
-    public function firstCompany(): BelongsTo
+    public function hasPermission(string $permission): bool
     {
-        return $this->belongsTo(Company::class);
+        return $this->is_active
+            && $this->role?->is_active
+            && $this->role->permissions()->where('key', $permission)->exists();
+    }
+
+    public function isOwner(): bool
+    {
+        return (bool) $this->role?->is_protected;
     }
 
     public function hasActiveSubscription(): bool
     {
-        $company = $this->companies()->first();
-        return $company?->hasActiveSubscription() ?? false;
+        return $this->company?->hasActiveSubscription() ?? false;
     }
 
     public function carLimitReached(): bool
     {
-        $company = $this->companies()->first();
-        return $company?->carLimitReached() ?? false;
+        return $this->company?->carLimitReached() ?? false;
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            if ($user->role_id) {
+                $roleCompanyId = Role::query()->whereKey($user->role_id)->value('company_id');
+                if ((int) $roleCompanyId !== (int) $user->company_id) {
+                    throw ValidationException::withMessages(['role_id' => 'The selected role belongs to another tenant.']);
+                }
+            }
+
+            if ($user->exists && (
+                ($user->isDirty('is_active') && ! $user->is_active)
+                || $user->isDirty('role_id')
+                || $user->isDirty('company_id')
+            )) {
+                app(\App\Services\TenantUserService::class)->assertCanDeactivate($user);
+            }
+        });
+
+        static::deleting(function (User $user): void {
+            if ($user->isOwner()) {
+                app(\App\Services\TenantUserService::class)->assertCanDeactivate($user);
+            }
+        });
     }
 }

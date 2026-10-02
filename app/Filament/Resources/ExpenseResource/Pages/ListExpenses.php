@@ -24,6 +24,7 @@ class ListExpenses extends ListRecords
     protected function getHeaderActions(): array
     {
         $importAction = Action::make('importFromExcel')
+            ->visible(fn () => auth()->user()?->hasPermission('expenses.import') ?? false)
             ->label('Import')
             ->button() 
             ->color('gray') 
@@ -80,6 +81,7 @@ class ListExpenses extends ListRecords
                 //     ->icon('heroicon-s-document-arrow-down')
                 //     ->action(fn () => Excel::download(new ExpenseTemplateExport, 'expense-template.xlsx')),
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('expenses.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')
@@ -92,6 +94,7 @@ class ListExpenses extends ListRecords
                     }),
             ] : [
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('expenses.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')

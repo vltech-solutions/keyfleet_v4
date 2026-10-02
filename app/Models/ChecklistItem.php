@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ChecklistItem extends Model
 {
+    use TracksUserAttribution;
+
     use HasFactory;
 
     protected $fillable = [

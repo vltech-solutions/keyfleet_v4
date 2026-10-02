@@ -4,7 +4,8 @@ namespace App\Models;
 
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Role;
+use App\Models\Concerns\TracksUserAttribution;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -13,6 +14,8 @@ use Carbon\Carbon;
 
 class Company extends Model implements HasAvatar
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'name',
         'slug',
@@ -39,9 +42,9 @@ class Company extends Model implements HasAvatar
         'is_reservation_fee_enabled' => 'boolean',
     ];
 
-    public function users(): BelongsToMany
+    public function users(): HasMany
     {
-        return $this->belongsToMany(User::class);
+        return $this->hasMany(User::class);
     }
 
     public function cars(): HasMany
@@ -112,6 +115,11 @@ class Company extends Model implements HasAvatar
     public function contract()
     {
         return $this->hasOne(Contract::class);
+    }
+
+    public function roles()
+    {
+        return $this->hasMany(Role::class);
     }
 
     public function hasActiveSubscription(): bool
@@ -193,6 +201,11 @@ class Company extends Model implements HasAvatar
     {
         $carLimit = $this->plan()?->car_limit ?? 0;
         return $carLimit > 0 && $this->cars()->count() >= $carLimit;
+    }
+
+    public function userLimit(): ?int
+    {
+        return $this->plan()?->user_limit;
     }
 
     public function subscriptionDaysLeft(): ?int

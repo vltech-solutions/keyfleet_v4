@@ -27,7 +27,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Intervention\Image\Facades\Image;
 
-class CustomerResource extends Resource
+class CustomerResource extends TenantResource
 {
     protected static ?string $model = Customer::class;
 
@@ -150,6 +150,15 @@ class CustomerResource extends Resource
                     ->label('Created At')
                     ->dateTime('M d, Y h:i A') 
                     ->sortable(),
+
+                TextColumn::make('creator.name')
+                    ->label('Created By')
+                    ->description(fn ($record) => $record->creator && ! $record->creator->is_active ? 'Inactive' : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updater.name')
+                    ->label('Last Updated By')
+                    ->description(fn ($record) => $record->updated_at?->format('M d, Y h:i A'))
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('bookings_count')
                     ->label('Bookings Count')

@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 
-class PartnerResource extends Resource
+class PartnerResource extends TenantResource
 {
     protected static ?string $model = Partners::class;
 
@@ -146,7 +146,7 @@ class PartnerResource extends Resource
                             Action::make('generate_token')
                                 ->label('Generate Link')
                                 ->icon('heroicon-o-link')
-                                ->visible(fn ($record) => $record->canManageTokens())
+                                ->visible(fn ($record) => (auth()->user()?->hasPermission('partners.tokens') ?? false) && $record->canManageTokens())
                                 ->action(function ($record) {
                                     $token = $record->generateAccessToken();
                                     $link = route('partner.report', $token);
@@ -180,7 +180,7 @@ class PartnerResource extends Resource
                                 ->label('Regenerate Link')
                                 ->icon('heroicon-o-arrow-path')
                                 ->color('warning')
-                                ->visible(fn ($record) => $record->canManageTokens())
+                                ->visible(fn ($record) => (auth()->user()?->hasPermission('partners.tokens') ?? false) && $record->canManageTokens())
                                 ->requiresConfirmation()
                                 ->modalHeading('Regenerate Report Link')
                                 ->modalDescription('This will invalidate the current link and generate a new one. The partner will need to use the new link.')
@@ -204,7 +204,7 @@ class PartnerResource extends Resource
                                 ->modalHeading('Revoke Access')
                                 ->modalDescription('This will revoke access to the report immediately. The partner will no longer be able to view the report.')
                                 ->modalSubmitActionLabel('Yes, revoke')
-                                ->visible(fn ($record) => $record->access_token !== null)
+                                ->visible(fn ($record) => (auth()->user()?->hasPermission('partners.tokens') ?? false) && $record->access_token !== null)
                                 ->action(function ($record) {
                                     $record->access_token = null;
                                     $record->token_expires_at = null;

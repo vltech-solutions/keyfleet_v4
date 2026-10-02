@@ -2,11 +2,15 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\Widget;
 use App\Models\Booking;
 
 class UpcomingBookings extends Widget
 {
+    use AuthorizesTenantWidget;
+
     protected static string $view = 'filament.widgets.upcoming-bookings';
 
     protected static ?int $sort = 4;

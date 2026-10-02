@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 
 class BookingInspection extends Model
 {
+    use TracksUserAttribution;
+
     protected $fillable = [
         'booking_id',
         'type', // 'pre' or 'post'

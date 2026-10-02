@@ -49,7 +49,7 @@ class GoogleController extends Controller
         
         session()->regenerate();
 
-        $tenant = $user->companies()->first(); 
+        $tenant = $user->company;
 
         if ($tenant) {
             return redirect()->intended("/app/{$tenant->slug}");

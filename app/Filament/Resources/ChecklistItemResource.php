@@ -20,7 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Support\Enums\ActionSize;
 
-class ChecklistItemResource extends Resource
+class ChecklistItemResource extends TenantResource
 {
     protected static ?string $model = ChecklistItem::class;
 

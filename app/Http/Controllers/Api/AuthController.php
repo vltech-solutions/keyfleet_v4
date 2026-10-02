@@ -18,7 +18,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user || ! $user->is_active || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid credentials'
@@ -26,6 +26,8 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('mobile_token')->plainTextToken;
+
+        $user->forceFill(['last_login_at' => now()])->save();
 
         return response()->json([
             'status' => 'success',

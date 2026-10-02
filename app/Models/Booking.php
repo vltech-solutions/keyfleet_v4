@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksUserAttribution;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -18,6 +20,8 @@ use Google\Service\Calendar;
 
 class Booking extends Model
 {
+    use TracksUserAttribution;
+
     // use LogsActivity;
     
     protected $fillable = [

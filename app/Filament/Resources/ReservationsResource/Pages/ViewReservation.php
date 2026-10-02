@@ -84,6 +84,7 @@ class ViewReservation extends EditRecord
         $actions = auth()->user()->hasActiveSubscription() && $this->record->status === 'pending'
             ? [
                 Action::make('approve')
+                    ->visible(fn () => auth()->user()?->hasPermission('reservations.approve') ?? false)
                     ->label('Approve')
                     ->color('success')
                     // ->icon('heroicon-o-check')
@@ -402,6 +403,7 @@ class ViewReservation extends EditRecord
                     }),
 
                 Action::make('decline')
+                    ->visible(fn () => auth()->user()?->hasPermission('reservations.cancel') ?? false)
                     ->label('Decline')
                     ->color('danger')
                     // ->icon('heroicon-o-x-mark')

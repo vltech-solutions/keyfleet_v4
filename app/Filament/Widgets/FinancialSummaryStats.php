@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\Widget;
 
 use App\Models\Expense;
@@ -10,6 +12,8 @@ use App\Models\BookingPayments;
 
 class FinancialSummaryStats extends Widget
 {
+    use AuthorizesTenantWidget;
+
     protected static string $view = 'filament.widgets.financial-summary-stats';
 
     protected static ?int $sort = 1;

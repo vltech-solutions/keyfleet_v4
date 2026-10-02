@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use Filament\Pages\Page;
 use App\Models\Partners;
 use App\Models\Booking;
@@ -19,6 +21,8 @@ use Filament\Tables\Columns\ImageColumn;
 
 class PartnerCommissionSummary extends Page implements Tables\Contracts\HasTable
 {
+    use AuthorizesTenantPage;
+
     use Tables\Concerns\InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';

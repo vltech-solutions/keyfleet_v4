@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Concerns\AuthorizesTenantWidget;
+
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Car;
@@ -10,6 +12,8 @@ use Carbon\Carbon;
 
 class FleetUtilizationStats extends StatsOverviewWidget
 {
+    use AuthorizesTenantWidget;
+
     protected function getStats(): array
     {
         $vehicles = Car::count();

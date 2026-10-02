@@ -41,7 +41,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\MaxWidth;
 
-class ExpenseResource extends Resource
+class ExpenseResource extends TenantResource
 {
     protected static ?string $model = Expense::class;
 
@@ -229,6 +229,14 @@ class ExpenseResource extends Resource
                             ->money('PHP')
                             ->label('Total'),
                     ]),
+                TextColumn::make('creator.name')
+                    ->label('Created By')
+                    ->description(fn ($record) => $record->creator && ! $record->creator->is_active ? 'Inactive' : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updater.name')
+                    ->label('Last Updated By')
+                    ->description(fn ($record) => $record->updated_at?->format('M d, Y h:i A'))
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('car')

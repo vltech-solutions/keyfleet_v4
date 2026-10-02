@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use Filament\Forms\Form;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Tabs\Tab;
@@ -25,6 +27,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CompanyProfile extends EditTenantProfile
 {
+    use AuthorizesTenantPage;
+
     public static function getLabel(): string
     {
         return 'Company Settings';

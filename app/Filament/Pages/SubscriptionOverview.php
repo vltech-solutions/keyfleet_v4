@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\AuthorizesTenantPage;
+
 use App\Models\Addon;
 use App\Models\AddonPrice;
 use Illuminate\Http\Request;
@@ -34,6 +36,8 @@ use Filament\Tables\Table;
 
 class SubscriptionOverview extends Page implements HasTable,HasForms
 {
+    use AuthorizesTenantPage;
+
     use InteractsWithForms;
     use InteractsWithTable;
 
@@ -68,6 +72,7 @@ class SubscriptionOverview extends Page implements HasTable,HasForms
         
         return [
             Action::make('subscribe')
+                ->visible(fn () => auth()->user()?->hasPermission('subscription.manage') ?? false)
                 ->label($isExpired ? 'Add Subscription' : 'Change Subscription Plan')
                 ->modalHeading($isExpired ? 'Add Subscription' : 'Change Subscription Plan')
                 ->modalButton(fn () => __('💳 Pay Now'))

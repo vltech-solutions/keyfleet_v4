@@ -53,7 +53,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Support\Enums\ActionSize;
 
-class QuotationResource extends Resource
+class QuotationResource extends TenantResource
 {
     protected static ?string $model = Booking::class;
 
@@ -118,7 +118,7 @@ class QuotationResource extends Resource
 
             $previewUrl = route('contract.preview', ['booking' => $get('id')]);
 
-            $company = auth()->user()->companies()->first();
+            $company = auth()->user()->company;
             if(!$company->contract) {
                 return [];   
             }
@@ -666,6 +666,7 @@ class QuotationResource extends Resource
     public static function table(Table $table): Table
     {   
         $importAction = Action::make('importFromExcel')
+            ->visible(fn () => auth()->user()?->hasPermission('quotations.import') ?? false)
             ->label('Import')
             ->button() 
             ->color('gray') 
@@ -721,6 +722,7 @@ class QuotationResource extends Resource
                     ->icon('heroicon-s-document-arrow-down')
                     ->action(fn () => Excel::download(new BookingTemplateExport, 'booking-template.xlsx')),
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('quotations.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')
@@ -735,6 +737,7 @@ class QuotationResource extends Resource
                     }),
             ] : [
                 Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('quotations.export') ?? false)
                     ->label('Export')
                     ->button()
                     ->color('gray')
@@ -887,6 +890,7 @@ class QuotationResource extends Resource
                     ? [
                         Tables\Actions\ActionGroup::make([
                             Tables\Actions\Action::make('convertToBooking')
+                                ->visible(fn () => auth()->user()?->hasPermission('quotations.convert') ?? false)
                                 ->label('Convert to Booking')
                                 ->icon('heroicon-o-check-circle')
                                 ->color('success')
