@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
+use Illuminate\Contracts\Support\Htmlable;
 
 class Dashboard extends BaseDashboard
 {
@@ -39,6 +40,11 @@ class Dashboard extends BaseDashboard
 
     public string $carTypeName = 'Cars';
 
+    public function getHeading(): string|Htmlable
+    {
+        return '';
+    }
+
     public function mount(): void
     {
         $this->bookingYear = now()->year;
@@ -61,6 +67,11 @@ class Dashboard extends BaseDashboard
     public function getTenantName(): string
     {
         return Filament::getTenant()?->name ?? 'KeyFleet';
+    }
+
+    public function getRentalOperationsUrl(): string
+    {
+        return \App\Filament\Pages\RentalOperations::getUrl();
     }
 
     #[Computed]
@@ -283,6 +294,112 @@ class Dashboard extends BaseDashboard
             ->orderBy('car_type')
             ->pluck('car_type', 'id')
             ->toArray();
+    }
+
+    #[Computed]
+    public function financialTrend(): array
+    {
+        $revenue = BookingPayments::query()
+            ->whereHas('fundType', fn ($q) => $q->where('name', '!=', "Partner's Fund"))
+            ->whereYear('payment_date', $this->bookingYear)
+            ->selectRaw('MONTH(payment_date) month, SUM(amount) total')
+            ->groupByRaw('MONTH(payment_date)')
+            ->pluck('total', 'month');
+
+        $expenses = Expense::query()
+            ->whereYear('date', $this->bookingYear)
+            ->selectRaw('MONTH(date) month, SUM(amount) total')
+            ->groupByRaw('MONTH(date)')
+            ->pluck('total', 'month');
+
+        return collect(range(1, 12))->map(function ($month) use ($revenue, $expenses) {
+            $rev = (float) $revenue->get($month, 0);
+            $exp = (float) $expenses->get($month, 0);
+
+            return [
+                'month' => Carbon::create(null, $month)->format('M'),
+                'revenue' => $rev,
+                'expenses' => $exp,
+                'profit' => $rev - $exp,
+            ];
+        })->all();
+    }
+
+    #[Computed]
+    public function fleetUtilization(): array
+    {
+        $total = Car::query()->count();
+
+        $active = Booking::query()
+            ->where('status', 'approved')
+            ->where('start_datetime', '<=', now())
+            ->where('end_datetime', '>=', now())
+            ->whereNotNull('car_id')
+            ->distinct()
+            ->count('car_id');
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'idle' => max(0, $total - $active),
+            'percentage' => $total > 0 ? round(($active / $total) * 100) : 0,
+        ];
+    }
+
+    #[Computed]
+    public function bookingSources(): array
+    {
+        $sources = Booking::query()
+            ->join('sources', 'bookings.source_id', '=', 'sources.id')
+            ->whereYear('bookings.start_datetime', $this->bookingYear)
+            ->select('sources.source')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('sources.source')
+            ->orderByDesc('total')
+            ->pluck('total', 'sources.source');
+
+        $total = (int) $sources->sum();
+
+        /*
+        * Maximum of 5 displayed entries:
+        * Top 4 sources + Others
+        */
+        if ($sources->count() > 5) {
+            $visible = $sources->take(4);
+            $others = (int) $sources->slice(4)->sum();
+
+            $visible->put('Others', $others);
+        } else {
+            $visible = $sources;
+        }
+
+        $colors = [
+            '#3b82f6',
+            '#10b981',
+            '#f59e0b',
+            '#8b5cf6',
+            '#94a3b8',
+        ];
+
+        $index = 0;
+
+        return [
+            'total' => $total,
+
+            'items' => $visible
+                ->map(function ($count, $source) use ($total, $colors, &$index) {
+                    return [
+                        'name' => $source,
+                        'count' => (int) $count,
+                        'percentage' => $total > 0
+                            ? round(($count / $total) * 100, 1)
+                            : 0,
+                        'color' => $colors[$index++ % count($colors)],
+                    ];
+                })
+                ->values()
+                ->all(),
+        ];
     }
 
     public function checkAvailability(): void

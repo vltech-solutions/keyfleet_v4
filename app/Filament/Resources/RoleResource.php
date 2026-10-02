@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rules\Unique;
+use Illuminate\Support\Str;
 
 class RoleResource extends Resource
 {
@@ -27,35 +28,112 @@ class RoleResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $permissions = Permission::query()
+            ->orderBy('module')
+            ->orderBy('key')
+            ->get()
+            ->groupBy('module');
+
         return $form->schema([
-            Forms\Components\TextInput::make('name')
-                ->required()
-                ->maxLength(255)
-                ->disabled(fn (?Role $record): bool => $record?->is_protected ?? false)
-                ->unique(
-                    ignoreRecord: true,
-                    modifyRuleUsing: fn (Unique $rule) => $rule->where('company_id', Filament::getTenant()?->getKey()),
-                ),
-            Forms\Components\Textarea::make('description')->columnSpanFull(),
-            Forms\Components\Toggle::make('is_active')
-                ->default(true)
-                ->disabled(fn (?Role $record): bool => $record?->is_protected ?? false),
-            Forms\Components\CheckboxList::make('permissions')
-                ->relationship('permissions', 'description')
-                ->options(fn (): array => Permission::query()
-                    ->orderBy('module')
-                    ->orderBy('key')
-                    ->get()
-                    ->mapWithKeys(fn (Permission $permission) => [
-                        $permission->id => "{$permission->module}: {$permission->description}",
-                    ])
-                    ->all())
-                ->columns(2)
-                ->bulkToggleable()
-                ->searchable()
-                ->disabled(fn (?Role $record): bool => $record?->is_protected ?? false)
+            Forms\Components\Section::make('Role Information')
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->required()
+                        ->maxLength(255)
+                        ->disabled(fn (?Role $record): bool => $record?->is_protected ?? false)
+                        ->unique(
+                            ignoreRecord: true,
+                            modifyRuleUsing: fn (Unique $rule) =>
+                                $rule->where('company_id', Filament::getTenant()?->getKey()),
+                        ),
+
+                    Forms\Components\Toggle::make('is_active')
+                        ->default(true)
+                        ->disabled(fn (?Role $record): bool => $record?->is_protected ?? false),
+
+                    Forms\Components\Textarea::make('description')
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ])
+                ->columns(2),
+
+            Forms\Components\Section::make('Permissions')
+                ->description('Choose what users assigned to this role can access.')
+                ->schema(
+                    $permissions
+                        ->map(function ($items, $module) {
+                            $stateKey = 'permission_group_' . Str::slug($module, '_');
+
+                            return Forms\Components\Section::make($module)
+                                ->compact()
+                                ->collapsible()
+                                ->schema([
+                                    Forms\Components\CheckboxList::make($stateKey)
+                                        ->hiddenLabel()
+                                        ->options(
+                                            $items
+                                                ->mapWithKeys(fn (Permission $permission) => [
+                                                    $permission->id => $permission->description,
+                                                ])
+                                                ->all()
+                                        )
+                                        ->columns([
+                                            'md' => 2,
+                                            'xl' => 3,
+                                        ])
+                                        ->bulkToggleable()
+                                        ->disabled(
+                                            fn (?Role $record): bool =>
+                                                $record?->is_protected ?? false
+                                        )
+                                        ->afterStateHydrated(function (
+                                            Forms\Components\CheckboxList $component,
+                                            ?Role $record
+                                        ) use ($items): void {
+                                            if (! $record) {
+                                                $component->state([]);
+
+                                                return;
+                                            }
+
+                                            $record->loadMissing('permissions');
+
+                                            $ids = $record->permissions
+                                                ->whereIn('id', $items->pluck('id'))
+                                                ->pluck('id')
+                                                ->all();
+
+                                            $component->state($ids);
+                                        }),
+                                ]);
+                        })
+                        ->values()
+                        ->all()
+                )
                 ->columnSpanFull(),
-        ])->columns(2);
+        ]);
+    }
+
+    public static function extractPermissionIds(array $data): array
+    {
+        return collect($data)
+            ->filter(
+                fn ($value, $key) => str_starts_with($key, 'permission_group_')
+            )
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public static function removePermissionGroups(array $data): array
+    {
+        return collect($data)
+            ->reject(
+                fn ($value, $key) => str_starts_with($key, 'permission_group_')
+            )
+            ->all();
     }
 
     public static function table(Table $table): Table
