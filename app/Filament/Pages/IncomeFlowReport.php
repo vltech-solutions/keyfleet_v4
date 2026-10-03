@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Filament\Forms\Components\ToggleButtons;
 use Carbon\Carbon;
 
 class IncomeFlowReport extends Page
@@ -269,67 +270,79 @@ class IncomeFlowReport extends Page
 
     protected function getFormSchema(): array
     {
-        // Get the current company/tenant
         $company = Filament::getTenant();
-        
-        $fundTypes = FundType::where('company_id', $company->id)
+
+        $fundTypes = FundType::query()
+            ->where('company_id', $company->id)
             ->where('name', '!=', "Partner's Fund")
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();
 
-        // Use + operator to preserve keys
-        $fundTypeOptions = ['all' => 'All Funds'] + $fundTypes;
-
-        // dd($fundTypes);
-
         return [
-            Section::make('Filters')
+            Section::make('Report Filters')
+                ->description('Filter the cash flow transactions included in this report.')
+                ->icon('heroicon-o-adjustments-horizontal')
+                ->compact()
                 ->schema([
-                    Grid::make(12)->schema([
-                        Select::make('filter_period')
-                            ->label('Filter Period')
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 12,
+                    ])->schema([
+
+                        ToggleButtons::make('filter_period')
+                            ->label('Report Period')
                             ->options([
                                 'monthly' => 'Monthly',
                                 'yearly' => 'Yearly',
-                                'custom' => 'Custom Date',
+                                'custom' => 'Custom',
                             ])
+                            ->icons([
+                                'monthly' => 'heroicon-o-calendar-days',
+                                'yearly' => 'heroicon-o-calendar',
+                                'custom' => 'heroicon-o-calendar-date-range',
+                            ])
+                            ->grouped()
+                            ->inline()
                             ->default('monthly')
-                            ->reactive()
                             ->live()
-                            ->columnSpan(2),
+                            ->columnSpan(['xl' => 4]),
 
-                        Select::make('type')
-                            ->label('Transaction Type')
+                        ToggleButtons::make('type')
+                            ->label('Transactions')
                             ->options([
-                                'all' => 'All Transactions',
-                                'income' => 'Income Only',
-                                'expense' => 'Expense Only',
+                                'all' => 'All',
+                                'income' => 'Income',
+                                'expense' => 'Expenses',
                             ])
+                            ->grouped()
+                            ->inline()
                             ->default('all')
-                            ->reactive()
                             ->live()
-                            ->columnSpan(2),
+                            ->columnSpan(['xl' => 3]),
 
                         Select::make('fund_type')
-                            ->label('Fund Type')
-                            ->options($fundTypeOptions)
+                            ->label('Fund')
+                            ->options(['all' => 'All Funds'] + $fundTypes)
                             ->default('all')
-                            ->reactive()
-                            ->live()
                             ->searchable()
-                            ->columnSpan(2),
+                            ->native(false)
+                            ->live()
+                            ->columnSpan(['xl' => 3]),
 
-                        // Monthly filters
                         Select::make('year')
                             ->label('Year')
-                            ->options(fn () => collect(range(date('Y'), 2000))->mapWithKeys(fn ($year) => [$year => $year])->toArray())
-                            ->default(date('Y'))
-                            ->searchable()
-                            ->reactive()
+                            ->options(
+                                fn () => collect(range(now()->year, 2000))
+                                    ->mapWithKeys(fn ($year) => [$year => $year])
+                                    ->all()
+                            )
+                            ->default(now()->year)
+                            ->native(false)
                             ->live()
                             ->hidden(fn ($get) => $get('filter_period') === 'custom')
-                            ->columnSpan(3),
+                            ->columnSpan(['xl' => 2]),
 
                         Select::make('month')
                             ->label('Month')
@@ -348,33 +361,28 @@ class IncomeFlowReport extends Page
                                 '11' => 'November',
                                 '12' => 'December',
                             ])
-                            ->default((string) date('n'))
-                            ->reactive()
+                            ->default((string) now()->month)
+                            ->native(false)
                             ->live()
-                            ->searchable()
-                            ->hidden(fn ($get) => $get('filter_period') !== 'monthly')
-                            ->columnSpan(3),
+                            ->visible(fn ($get) => $get('filter_period') === 'monthly')
+                            ->columnSpan(['xl' => 2]),
 
-                        // Custom date filters
                         DatePicker::make('date_from')
-                            ->label('Date From')
-                            ->default(Carbon::now()->startOfMonth()->format('Y-m-d'))
-                            ->reactive()
+                            ->label('From')
+                            ->native(false)
                             ->live()
-                            ->hidden(fn ($get) => $get('filter_period') !== 'custom')
-                            ->columnSpan(2),
+                            ->visible(fn ($get) => $get('filter_period') === 'custom')
+                            ->columnSpan(['xl' => 2]),
 
                         DatePicker::make('date_to')
-                            ->label('Date To')
-                            ->default(Carbon::now()->endOfMonth()->format('Y-m-d'))
-                            ->reactive()
+                            ->label('To')
+                            ->native(false)
                             ->live()
-                            ->hidden(fn ($get) => $get('filter_period') !== 'custom')
-                            ->columnSpan(2),
+                            ->visible(fn ($get) => $get('filter_period') === 'custom')
+                            ->afterOrEqual('date_from')
+                            ->columnSpan(['xl' => 2]),
                     ]),
-                ])
-                ->collapsible()
-                ->collapsed(false),
+                ]),
         ];
     }
 

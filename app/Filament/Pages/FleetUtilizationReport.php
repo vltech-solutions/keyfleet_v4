@@ -13,6 +13,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms;
 use Filament\Pages\Page;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -47,47 +48,211 @@ class FleetUtilizationReport extends Page implements HasForms, HasTable
 
     protected function getFormSchema(): array
     {
+        return [
+            Section::make('Report Filters')
+                ->description('Choose the fleet scope and reporting period.')
+                ->icon('heroicon-o-adjustments-horizontal')
+                ->schema([
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 12,
+                    ])->schema([
 
-        return 
-            [
-                Section::make()
-                    ->schema([
-                    Grid::make(4)->schema([
-                        Select::make('view_type')
-                            ->options(['per_car' => 'Per Car', 'whole' => 'Whole Fleet'])
-                            ->live(),
-                        
-                        Select::make('period')
+                        Forms\Components\ToggleButtons::make('view_type')
+                            ->label('Report Scope')
+                            ->options([
+                                'whole' => 'Whole Fleet',
+                                'per_car' => 'Per Vehicle',
+                            ])
+                            ->icons([
+                                'whole' => 'heroicon-o-truck',
+                                'per_car' => 'heroicon-o-user',
+                            ])
+                            ->colors([
+                                'whole' => 'primary',
+                                'per_car' => 'primary',
+                            ])
+                            ->inline()
+                            ->grouped()
+                            ->default('whole')
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 3,
+                            ]),
+
+                        Forms\Components\ToggleButtons::make('period')
+                            ->label('Period')
                             ->options([
                                 'monthly' => 'Monthly',
-                                'semi_annual' => 'Semi-Annual',
-                                'annual' => 'Annual',
-                            ])->live(),
+                                'semi_annual' => '6 Months',
+                                'annual' => '12 Months',
+                            ])
+                            ->inline()
+                            ->grouped()
+                            ->default('monthly')
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 4,
+                            ]),
 
                         TextInput::make('date')
-                            ->label(fn($get) => match($get('period')) {
-                                'annual' => 'Start Month',
-                                'semi_annual' => 'Start Month',
-                                default => 'Select Month'
+                            ->label(fn ($get) => match ($get('period')) {
+                                'semi_annual' => 'Starting Month',
+                                'annual' => 'Starting Month',
+                                default => 'Month',
                             })
                             ->type('month')
-                            ->live(),
+                            ->required()
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 2,
+                            ]),
 
                         Select::make('car_id')
                             ->label('Vehicle')
-                            ->options(Car::pluck('name', 'id'))
-                            ->visible(fn ($get) => $get('view_type') === 'per_car')
+                            ->placeholder('Select vehicle')
+                            ->options(
+                                Car::query()
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                            )
                             ->searchable()
-                            ->live(),
+                            ->preload()
+                            ->native(false)
+                            ->visible(
+                                fn ($get): bool =>
+                                    $get('view_type') === 'per_car'
+                            )
+                            ->required(
+                                fn ($get): bool =>
+                                    $get('view_type') === 'per_car'
+                            )
+                            ->live()
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 3,
+                            ]),
                     ]),
                 ])
-                ->statePath('data')
+                ->compact()
+                ->statePath('data'),
         ];
     }
 
-    public function updatedData()
+    // public function updatedData()
+    // {
+    //     $this->dispatch('updateChart', data: $this->chart_data);
+    // }
+
+    private function reportCars()
     {
-        $this->dispatch('updateChart', data: $this->chart_data);
+        return Car::query()
+            ->when(
+                ($this->data['view_type'] ?? 'whole') === 'per_car' && filled($this->data['car_id'] ?? null),
+                fn (Builder $query) => $query->where('id', $this->data['car_id'])
+            )
+            ->get();
+    }
+
+    public function getReportDataProperty(): array
+    {
+        $cars = $this->reportCars();
+        $totalRate = $bookedDays = $capacityDays = 0;
+
+        foreach ($cars as $car) {
+            $metrics = $this->calculateCarMetrics($car);
+            $totalRate += $metrics['rate'];
+            $bookedDays += $metrics['booked'];
+            $capacityDays += $metrics['available'];
+        }
+
+        $rate = $cars->count() ? $totalRate / $cars->count() : 0;
+
+        return [
+            'fleet_rate' => round($rate, 1),
+            'total_cars' => $cars->count(),
+            'booked_days' => $bookedDays,
+            'capacity_days' => $capacityDays,
+            'unused_days' => max(0, $capacityDays - $bookedDays),
+            'remark' => $this->getRecommendation($rate),
+        ];
+    }
+
+    public function getChartDataProperty(): array
+    {
+        $period = $this->data['period'] ?? 'monthly';
+        $selected = Carbon::parse($this->data['date'] ?? now()->format('Y-m'))->startOfMonth();
+
+        [$start, $months] = match ($period) {
+            'annual' => [$selected, 12],
+            'semi_annual' => [$selected, 6],
+            default => [$selected->copy()->subMonths(5), 6],
+        };
+
+        $cars = $this->reportCars();
+
+        return collect(range(0, $months - 1))->map(function ($i) use ($start, $cars) {
+            $month = $start->copy()->addMonths($i);
+            $rate = $cars->avg(
+                fn (Car $car) => $this->calculateCarMetrics(
+                    $car,
+                    $month->format('Y-m'),
+                    'monthly'
+                )['rate']
+            ) ?? 0;
+
+            return [
+                'label' => $month->format('M Y'),
+                'short' => $month->format('M'),
+                'rate' => round($rate, 1),
+            ];
+        })->all();
+    }
+
+    public function getPerformanceMixProperty(): array
+    {
+        $bands = [
+            'Excellent' => 0,
+            'Good' => 0,
+            'Moderate' => 0,
+            'Low' => 0,
+        ];
+
+        foreach ($this->reportCars() as $car) {
+            $rate = $this->calculateCarMetrics($car)['rate'];
+
+            match (true) {
+                $rate >= 90 => $bands['Excellent']++,
+                $rate >= 70 => $bands['Good']++,
+                $rate >= 50 => $bands['Moderate']++,
+                default => $bands['Low']++,
+            };
+        }
+
+        return [
+            'total' => array_sum($bands),
+            'items' => $bands,
+        ];
+    }
+
+    public function getTopVehiclesProperty(): array
+    {
+        return $this->reportCars()
+            ->map(function (Car $car) {
+                return [
+                    'name' => $car->name,
+                    'plate' => $car->plate_number,
+                    'rate' => $this->calculateCarMetrics($car)['rate'],
+                ];
+            })
+            ->sortByDesc('rate')
+            ->take(5)
+            ->values()
+            ->all();
     }
 
     /**
@@ -226,35 +391,6 @@ class FleetUtilizationReport extends Page implements HasForms, HasTable
         ];
     }
 
-    /**
-     * Logic for Stats Cards
-     */
-    public function getReportDataProperty(): array
-    {
-        // Filter the cars based on the form data
-        $carsQuery = Car::query()
-            ->when(
-                $this->data['view_type'] === 'per_car' && filled($this->data['car_id']),
-                fn (Builder $query) => $query->where('id', $this->data['car_id'])
-            );
-
-        $cars = $carsQuery->get();
-        $totalRate = 0;
-
-        foreach($cars as $car) {
-            $totalRate += $this->calculateCarMetrics($car)['rate'];
-        }
-
-        $fleetRate = count($cars) > 0 ? $totalRate / count($cars) : 0;
-
-        return [
-            'fleet_rate' => round($fleetRate, 1),
-            'total_cars' => count($cars),
-            'remark' => $this->getRecommendation($fleetRate),
-            'color' => $this->getColor($fleetRate),
-        ];
-    }
-
     private function getPerfLabel($r): string {
         return match(true) { $r >= 90 => 'Excellent', $r >= 70 => 'Good', $r >= 50 => 'Moderate', default => 'Poor' };
     }
@@ -265,57 +401,5 @@ class FleetUtilizationReport extends Page implements HasForms, HasTable
 
     private function getColor($r): string {
         return match(true) { $r >= 90 => 'primary', $r >= 70 => 'info', $r >= 50 => 'warning', default => 'danger' };
-    }
-
-    public function getChartDataProperty(): array
-    {
-        $periodType = $this->data['period'] ?? 'monthly';
-        
-        $rawDate = ($this->data['date'] ?? now()->format('Y-m'));
-        
-        $startOfRange = Carbon::parse($rawDate)->startOfMonth();
-
-        // Determine Loop Count
-        $monthsToDisplay = match ($periodType) {
-            'annual' => 12,
-            'semi_annual' => 6,
-            default => 1,
-        };
-
-        $labels = [];
-        $datasets = [];
-
-        // Loop through each month in the range
-        for ($i = 0; $i < $monthsToDisplay; $i++) {
-            $targetMonth = $startOfRange->copy()->addMonths($i);
-            $labels[] = $targetMonth->format('M Y');
-
-            $carsQuery = Car::query()
-                ->when(
-                    $this->data['view_type'] === 'per_car' && filled($this->data['car_id']),
-                    fn (Builder $query) => $query->where('id', $this->data['car_id'])
-                );
-
-            $cars = $carsQuery->get();
-            $totalRate = 0;
-
-            foreach ($cars as $car) {
-                $totalRate += $this->calculateCarMetrics($car, $targetMonth->format('Y-m'), 'monthly')['rate'];
-            }
-
-            $datasets[] = $cars->count() > 0 ? round($totalRate / $cars->count(), 1) : 0;
-        }
-
-        return [
-            'datasets' => [[
-                'label' => 'Fleet Utilization (%)',
-                'data' => $datasets,
-                'fill' => 'start',
-                'borderColor' => '#3b82f6',
-                'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                'tension' => 0.4, 
-            ]],
-            'labels' => $labels,
-        ];
     }
 }

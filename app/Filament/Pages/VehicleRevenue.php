@@ -3,32 +3,39 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\AuthorizesTenantPage;
-
-use App\Models\Car;
 use App\Models\Booking;
+use App\Models\Car;
+use Carbon\Carbon;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DatePicker;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Concerns\InteractsWithTable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Computed;
+use Livewire\WithPagination;
 
-class VehicleRevenue extends Page implements HasTable
+class VehicleRevenue extends Page
 {
     use AuthorizesTenantPage;
-
-    use InteractsWithTable;
+    use WithPagination;
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static string $view = 'filament.pages.vehicle-revenue';
 
-    public ?string $carId = 'all';
+    public string $carId = 'all';
+
+    public string $period = 'this_month';
+
     public ?string $startDate = null;
+
     public ?string $endDate = null;
+
+    public function mount(): void
+    {
+        $this->applyPeriod('this_month');
+    }
 
     public static function getNavigationGroupSort(): ?int
     {
@@ -40,147 +47,225 @@ class VehicleRevenue extends Page implements HasTable
         return 2;
     }
 
-    protected function getDefaultTableRecordsPerPage(): int
+    public function setPeriod(string $period): void
     {
-        return 5;
+        $this->period = $period;
+
+        $this->applyPeriod($period);
+
+        $this->resetVehiclePagination();
     }
 
-    protected function getFormSchema(): array
+    protected function applyPeriod(string $period): void
     {
-        return [
-            Section::make()
-                ->schema([
-                    Grid::make(12)->schema([
-                        Select::make('carId')
-                            ->label('Car')
-                            ->options(['all' => 'All Cars'] + Car::query()
-                                ->orderBy('brand')
-                                ->get()
-                                ->mapWithKeys(fn ($car) => [$car->id => "{$car->name} ({$car->brand} {$car->model} - {$car->color})"])
-                                ->toArray())
-                            ->default('all')
-                            ->reactive()
-                            ->columnSpan(4),
+        match ($period) {
+            'this_month' => $this->setDateRange(
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            ),
 
-                        DatePicker::make('startDate')
-                            ->label('Start Date')
-                            ->reactive()
-                            ->nullable()
-                            ->columnSpan(4),
+            'this_year' => $this->setDateRange(
+                now()->startOfYear(),
+                now()->endOfYear()
+            ),
 
-                        DatePicker::make('endDate')
-                            ->label('End Date')
-                            ->reactive()
-                            ->nullable()
-                            ->columnSpan(4),
-                    ]),
-                ]),
-        ];
+            'all_time' => $this->setDateRange(null, null),
+
+            'custom' => null,
+
+            default => null,
+        };
     }
 
-    public function updated($propertyName): void
-    {
-        if (in_array($propertyName, ['startDate', 'endDate', 'carId'])) {
-            $this->resetTable();
-        }
+    protected function setDateRange(
+        ?Carbon $start,
+        ?Carbon $end
+    ): void {
+        $this->startDate = $start?->toDateString();
+        $this->endDate = $end?->toDateString();
     }
 
-    protected function getTableQuery()
+    protected function resetVehiclePagination(): void
     {
-        return Car::query()
-            ->when($this->carId !== 'all', fn ($q) => $q->where('id', $this->carId))
-            
-            ->withCount([
-                'bookings as filtered_bookings_count' => fn ($q) =>
-                    $q->where('status', 'approved') // only approved
-                    ->when($this->startDate && $this->endDate, fn ($q) =>
-                        $q->whereBetween('start_datetime', [$this->startDate, $this->endDate])
-                    )
-            ])
-
-            ->withSum([
-                'bookings as filtered_bookings_total_due' => fn ($q) =>
-                    $q->where('status', 'approved') // only approved
-                    ->when($this->startDate && $this->endDate, fn ($q) =>
-                        $q->whereBetween('start_datetime', [$this->startDate, $this->endDate])
-                    )
-            ], 'total_due')
-
-            ->with([
-                'bookings' => fn ($q) =>
-                    $q->where('status', 'approved') // only approved
-                    ->when($this->startDate && $this->endDate, fn ($q) =>
-                        $q->whereBetween('start_datetime', [$this->startDate, $this->endDate])
-                    )
-            ])
-
-            ->orderByDesc('filtered_bookings_total_due');
+        $this->resetPage('vehicleRevenuePage');
     }
 
-
-    protected function getTableColumns(): array
+    public function updatedCarId(): void
     {
-        return [
-            ImageColumn::make('image')->label('Image'),
+        $this->resetVehiclePagination();
+    }
 
-            TextColumn::make('name')
-                ->label('Car')
-                ->color('info')
-                ->badge(),
+    public function updatedStartDate(): void
+    {
+        $this->period = 'custom';
 
-            TextColumn::make('full_details')
-                ->label('Vehicle Info')
-                ->html()
-                ->getStateUsing(fn ($record) =>
-                    "{$record->brand} {$record->model} ({$record->year})<br>
-                    <span style='color:gray;'>{$record->color} | {$record->seat_count} seater</span>"
-                ),
+        $this->resetVehiclePagination();
+    }
 
-            TextColumn::make('filtered_bookings_count')
-                ->label('Bookings')
-                ,
+    public function updatedEndDate(): void
+    {
+        $this->period = 'custom';
 
-            TextColumn::make('total_revenue')
-                ->label('Revenue')
-                ->getStateUsing(fn ($record) =>
-                    '₱' . number_format($record->bookings->sum('total_due'), 2)
+        $this->resetVehiclePagination();
+    }
+
+    protected function applyBookingDateFilters(
+        Builder $query
+    ): Builder {
+        return $query
+            ->when(
+                $this->startDate,
+                fn (Builder $query) => $query->where(
+                    'start_datetime',
+                    '>=',
+                    Carbon::parse($this->startDate)->startOfDay()
                 )
-                ->color('success') // green color
-                ->weight('bold')   // bold text
-                ,
-        ];
+            )
+            ->when(
+                $this->endDate,
+                fn (Builder $query) => $query->where(
+                    'start_datetime',
+                    '<=',
+                    Carbon::parse($this->endDate)->endOfDay()
+                )
+            );
     }
 
-    public function getTotalRevenue()
+    protected function approvedBookings(): Builder
     {
-        return Booking::query()
-            ->when($this->carId !== 'all', fn ($q) => $q->where('car_id', $this->carId))
-            ->when($this->startDate, fn ($q) => $q->whereDate('start_datetime', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('end_datetime', '<=', $this->endDate))
+        $query = Booking::query()
+            ->where('status', 'approved')
+            ->when(
+                $this->carId !== 'all',
+                fn (Builder $query) => $query->where(
+                    'car_id',
+                    $this->carId
+                )
+            );
+
+        return $this->applyBookingDateFilters($query);
+    }
+
+    #[Computed]
+    public function vehicleRows(): LengthAwarePaginator
+    {
+        $start = $this->startDate
+            ? Carbon::parse($this->startDate)->startOfDay()
+            : null;
+
+        $end = $this->endDate
+            ? Carbon::parse($this->endDate)->endOfDay()
+            : null;
+
+        return Car::query()
+            ->when(
+                $this->carId !== 'all',
+                fn (Builder $query) => $query->where(
+                    'id',
+                    $this->carId
+                )
+            )
+            ->withCount([
+                'bookings as filtered_bookings_count' => function (
+                    Builder $query
+                ) use ($start, $end) {
+                    $query
+                        ->where('status', 'approved')
+                        ->when(
+                            $start,
+                            fn (Builder $query) => $query->where(
+                                'start_datetime',
+                                '>=',
+                                $start
+                            )
+                        )
+                        ->when(
+                            $end,
+                            fn (Builder $query) => $query->where(
+                                'start_datetime',
+                                '<=',
+                                $end
+                            )
+                        );
+                },
+            ])
+            ->withSum([
+                'bookings as filtered_bookings_total_due' => function (
+                    Builder $query
+                ) use ($start, $end) {
+                    $query
+                        ->where('status', 'approved')
+                        ->when(
+                            $start,
+                            fn (Builder $query) => $query->where(
+                                'start_datetime',
+                                '>=',
+                                $start
+                            )
+                        )
+                        ->when(
+                            $end,
+                            fn (Builder $query) => $query->where(
+                                'start_datetime',
+                                '<=',
+                                $end
+                            )
+                        );
+                },
+            ], 'total_due')
+            ->orderByDesc('filtered_bookings_total_due')
+            ->paginate(
+                perPage: 5,
+                pageName: 'vehicleRevenuePage'
+            );
+    }
+
+    public function getTotalRevenue(): float
+    {
+        return (float) $this->approvedBookings()
             ->sum('total_due');
     }
 
-    public function getTotalBookings()
+    public function getTotalBookings(): int
     {
-        return Booking::query()
-            ->when($this->carId !== 'all', fn ($q) => $q->where('car_id', $this->carId))
-            ->when($this->startDate, fn ($q) => $q->whereDate('start_datetime', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('end_datetime', '<=', $this->endDate))
+        return $this->approvedBookings()
             ->count();
     }
 
-    public function getTopCar()
+    public function getAverageRevenuePerBooking(): float
     {
-        $booking = Booking::query()
-            ->selectRaw('car_id, SUM(total_due) as total')
-            ->when($this->carId !== 'all', fn ($q) => $q->where('car_id', $this->carId))
-            ->when($this->startDate, fn ($q) => $q->whereDate('start_datetime', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('end_datetime', '<=', $this->endDate))
+        $count = $this->getTotalBookings();
+
+        return $count > 0
+            ? $this->getTotalRevenue() / $count
+            : 0;
+    }
+
+    public function getTopCar(): ?Car
+    {
+        if ($this->carId !== 'all') {
+            return Car::find($this->carId);
+        }
+
+        $booking = $this->approvedBookings()
+            ->selectRaw('car_id, SUM(total_due) as revenue_total')
             ->groupBy('car_id')
-            ->orderByDesc('total')
+            ->orderByDesc('revenue_total')
             ->with('car')
             ->first();
-    
+
         return $booking?->car;
+    }
+
+    public function getCarImageUrl(?Car $car): string
+    {
+        if (
+            $car?->image &&
+            Storage::disk('public')->exists($car->image)
+        ) {
+            return Storage::url($car->image);
+        }
+
+        return Storage::url('images/default-car.png');
     }
 }
