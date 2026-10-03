@@ -213,7 +213,7 @@ class QuotationResource extends TenantResource
                                                 }
 
                                                 if ($state && $carId) {
-                                                    if (! Car::isAvailableAt($carId, $state,$bookingId)) {
+                                                    if (! Car::isAvailableAt($carId, $state, null, $bookingId)) {
                                                         $set('start_datetime', null);
                                                         Notification::make()
                                                             ->title('Car is not available at the selected start date/time.')

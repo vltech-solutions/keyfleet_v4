@@ -31,6 +31,12 @@ class TenantUserService
 
     public function assertSeatAvailable(Company $company, ?User $excluding = null): void
     {
+        if (! $company->activeSubscription()) {
+            throw ValidationException::withMessages([
+                'email' => 'An active subscription is required before adding another team member.',
+            ]);
+        }
+
         $limit = $company->userLimit();
         if ($limit === null) {
             return;
@@ -43,9 +49,30 @@ class TenantUserService
 
         if ($activeUsers >= $limit) {
             throw ValidationException::withMessages([
-                'email' => "This subscription allows {$limit} active user".($limit === 1 ? '' : 's').'. Deactivate a user or upgrade the plan first.',
+                'email' => "User limit reached. Your current subscription allows up to {$limit} active user".($limit === 1 ? '' : 's').'. Deactivate an existing user or upgrade your plan to add another team member.',
             ]);
         }
+    }
+
+    public function createUser(Company $company, array $attributes): User
+    {
+        return DB::transaction(function () use ($company, $attributes): User {
+            $lockedCompany = Company::query()->lockForUpdate()->findOrFail($company->getKey());
+            $this->assertSeatAvailable($lockedCompany);
+            return User::create([...$attributes, 'company_id' => $lockedCompany->getKey()]);
+        }, 3);
+    }
+
+    public function updateUser(User $user, array $attributes): User
+    {
+        return DB::transaction(function () use ($user, $attributes): User {
+            $company = Company::query()->lockForUpdate()->findOrFail($user->company_id);
+            if (($attributes['is_active'] ?? $user->is_active) && ! $user->is_active) {
+                $this->assertSeatAvailable($company, $user);
+            }
+            $user->update($attributes);
+            return $user;
+        }, 3);
     }
 
     public function assertCanDeactivate(User $user): void

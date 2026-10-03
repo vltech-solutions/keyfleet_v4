@@ -6,16 +6,36 @@ use App\Filament\Pages\ViewInspectionPage;
 use App\Filament\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\Contract;
+use App\Services\VehicleAvailabilityService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 
 class EditBooking extends EditRecord
 {
     protected static string $resource = BookingResource::class;
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        $availability = app(VehicleAvailabilityService::class);
+        $carId = (int) ($data['car_id'] ?? $record->car_id);
+        return $availability->withLockedVehicle($carId, function () use ($availability, $record, $data, $carId): Model {
+            if (($data['status'] ?? $record->status) === 'approved') {
+                $availability->assertAvailable(
+                    $carId,
+                    $data['start_datetime'] ?? $record->start_datetime,
+                    $data['end_datetime'] ?? $record->end_datetime,
+                    (int) $record->getKey(),
+                );
+            }
+            $record->update($data);
+            return $record;
+        });
+    }
 
     protected function getHeaderActions(): array
     {

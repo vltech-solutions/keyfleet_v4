@@ -34,6 +34,12 @@ class CompanyProfile extends EditTenantProfile
         return 'Company Settings';
     }
 
+    public static function canView(Model $tenant): bool
+    {
+        return (auth()->user()?->hasPermission('settings.update') ?? false)
+            && (int) auth()->user()?->company_id === (int) $tenant->getKey();
+    }
+
     public function form(Form $form): Form
     {
         $tabs = [

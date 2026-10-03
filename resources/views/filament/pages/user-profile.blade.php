@@ -153,6 +153,7 @@
                   </div>
                </div>
 
+               @if (auth()->user()?->hasPermission('subscription.view'))
                {{-- Subscription Card --}}
                <a
                   href="/app/{{ $tenant }}/subscription-overview"
@@ -194,6 +195,7 @@
                   </div>
                   <x-heroicon-m-chevron-right class="w-4 h-4 text-gray-400" />
                </a>
+               @endif
               {{-- Logout Card --}}
               <form method="POST" action="{{ route('filament.app.auth.logout') }}" class="w-full">
                   @csrf

@@ -170,11 +170,13 @@ class AppPanelProvider extends PanelProvider
                 UserMenuItem::make()
                     ->label('My Subscription')
                      ->url(fn (): string => SubscriptionOverview::getUrl())
+                    ->visible(fn (): bool => auth()->user()?->hasPermission('subscription.view') ?? false)
                     ->icon('heroicon-o-credit-card')
                     ->sort(1),
                 UserMenuItem::make()
                     ->label('My Referral Program')
                     ->url(fn (): string => ReferralDashboard::getUrl())
+                    ->visible(fn (): bool => auth()->user()?->hasPermission('subscription.view') ?? false)
                     ->icon('heroicon-o-trophy')
                     ->sort(3),
             ])

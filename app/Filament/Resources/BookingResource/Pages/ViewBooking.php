@@ -113,9 +113,7 @@ class ViewBooking extends Page
     public function getSubheading(): string
     {
 
-        return $this->record && $this->record->booking_id
-            ? 'Booking # ' . $this->record->booking_id
-            : 'View Booking';
+        return '';
     }
 
     /**

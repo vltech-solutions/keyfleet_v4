@@ -86,7 +86,7 @@
 
         <div class="min-w-0">
             <p class="text-xs font-medium uppercase tracking-wider text-gray-400">
-                Booking
+                Booking No.
             </p>
 
             <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">

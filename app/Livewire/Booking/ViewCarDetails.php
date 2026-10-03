@@ -488,7 +488,7 @@ class ViewCarDetails extends Component implements HasForms
 
             $reservationNumber = $this->generateReservationNumber();
 
-            $reservation = Reservation::create([
+            $reservation = app(\App\Services\VehicleAvailabilityService::class)->createReservation([
                 'customer_id'        => $customer->id,
                 'start_date'         => \Carbon\Carbon::parse($this->start_date . ' ' . $this->start_time),
                 'end_date'           => \Carbon\Carbon::parse($this->end_date . ' ' . $this->end_time),

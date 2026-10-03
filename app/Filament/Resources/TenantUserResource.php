@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TenantUserResource\Pages;
+use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -74,18 +75,32 @@ class TenantUserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasPermission('users.view') ?? false;
+        return (auth()->user()?->hasPermission('users.view') ?? false)
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false);
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasPermission('users.create') ?? false;
+        return (auth()->user()?->hasPermission('users.create') ?? false)
+            && (static::tenantCompany()?->canCreateMoreUsers() ?? false);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    private static function tenantCompany(): ?Company
+    {
+        $tenant = Filament::getTenant();
+        return $tenant instanceof Company ? $tenant : null;
     }
 
     public static function canEdit(Model $record): bool
     {
         return (auth()->user()?->hasPermission('users.update') ?? false)
-            && (int) $record->company_id === (int) Filament::getTenant()?->getKey();
+            && (int) $record->company_id === (int) Filament::getTenant()?->getKey()
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false);
     }
 
     public static function canDelete(Model $record): bool

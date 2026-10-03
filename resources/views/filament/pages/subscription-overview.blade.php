@@ -2,11 +2,16 @@
     <div class="space-y-8">
         @php
             $company = \App\Models\Company::find(\Filament\Facades\Filament::getTenant()?->id);
-            $subscription = $company->subscription;
-            $plan = $subscription?->planPrice?->plan;
-            $carCount = $company->cars()->count();
-            $carLimit = $plan->car_limit ?? 0;
-            $usagePercentage = $carLimit > 0 ? min(100, ($carCount / $carLimit) * 100) : 0;
+            $subscription = $company->activeSubscription();
+            $plan = $subscription?->plan;
+            $userCount = $company->activeUserCount();
+            $userLimit = $company->userLimit();
+            $remainingUsers = $company->remainingUserSeats();
+            $carCount = $company->currentCarCount();
+            $carLimit = $company->carLimit();
+            $remainingCars = $company->remainingCarSlots();
+            $userPercentage = $userLimit > 0 ? min(100, ($userCount / $userLimit) * 100) : null;
+            $carPercentage = $carLimit > 0 ? min(100, ($carCount / $carLimit) * 100) : null;
             $isActive = $subscription && now()->lte($subscription->ends_at);
         @endphp
 
@@ -77,39 +82,61 @@
                     </x-filament::card>
                 </div>
 
-                {{-- Usage/Car Limit Card (Right 1/3) --}}
+                {{-- Plan usage (Right 1/3) --}}
                 <div class="lg:col-span-1">
                     <x-filament::card class="h-full border-none shadow-xl ring-1 ring-gray-200 dark:ring-white/10">
                         <div class="flex flex-col h-full">
                             <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Fleet Usage</h3>
+                                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Plan Usage</h3>
                                 <x-heroicon-s-truck class="w-5 h-5 text-primary-500" />
                             </div>
 
-                            <div class="flex flex-col items-center justify-center flex-grow py-4">
-                                <div class="text-center">
-                                    <span class="text-5xl font-black text-gray-900 dark:text-white">{{ $carCount }}</span>
-                                    <span class="block text-xs font-bold text-gray-400 uppercase">Cars Registered</span>
+                            <div class="space-y-6">
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="font-semibold text-gray-700 dark:text-gray-200">Users</span>
+                                        <span class="font-bold text-gray-900 dark:text-white">
+                                            {{ $userLimit === null ? $userCount : "{$userCount} of {$userLimit}" }}
+                                        </span>
+                                    </div>
+                                    @if ($userPercentage !== null)
+                                        <div class="w-full h-2 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-800">
+                                            <div class="h-full bg-primary-500 rounded-full" style="width: {{ $userPercentage }}%"></div>
+                                        </div>
+                                    @endif
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        @if ($userLimit === null)
+                                            Unlimited users
+                                        @elseif ($remainingUsers === 0)
+                                            User limit reached
+                                        @else
+                                            {{ $remainingUsers }} {{ \Illuminate\Support\Str::plural('seat', $remainingUsers) }} remaining
+                                        @endif
+                                    </p>
                                 </div>
-                            </div>
 
-                            <div class="mt-auto space-y-2">
-                                <div class="flex items-center justify-between text-xs font-bold uppercase tracking-tighter">
-                                    <span class="text-gray-500">Utilization</span>
-                                    <span class="{{ $usagePercentage > 90 ? 'text-danger-500' : 'text-primary-500' }}">
-                                        {{ $carCount }} / {{ $carLimit }}
-                                    </span>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="font-semibold text-gray-700 dark:text-gray-200">Vehicles</span>
+                                        <span class="font-bold text-gray-900 dark:text-white">
+                                            {{ $carLimit === null || $carLimit <= 0 ? $carCount : "{$carCount} of {$carLimit}" }}
+                                        </span>
+                                    </div>
+                                    @if ($carPercentage !== null)
+                                        <div class="w-full h-2 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-800">
+                                            <div class="h-full bg-primary-500 rounded-full" style="width: {{ $carPercentage }}%"></div>
+                                        </div>
+                                    @endif
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        @if ($remainingCars === null)
+                                            Unlimited vehicles
+                                        @elseif ($remainingCars === 0)
+                                            Vehicle limit reached
+                                        @else
+                                            {{ $remainingCars }} {{ \Illuminate\Support\Str::plural('slot', $remainingCars) }} remaining
+                                        @endif
+                                    </p>
                                 </div>
-                                {{-- Progress Bar --}}
-                                <div class="w-full h-3 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-800">
-                                    <div 
-                                        class="h-full transition-all duration-1000 bg-primary-500 rounded-full"
-                                        style="width: {{ $usagePercentage }}%"
-                                    ></div>
-                                </div>
-                                <p class="text-[10px] text-gray-400 italic mt-1 text-right">
-                                    {{ $carLimit - $carCount }} slots remaining
-                                </p>
                             </div>
                         </div>
                     </x-filament::card>

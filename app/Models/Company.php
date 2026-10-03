@@ -109,7 +109,17 @@ class Company extends Model implements HasAvatar
 
     public function plan()
     {
-        return $this->subscription?->planPrice?->plan;
+        return $this->activeSubscription()?->plan;
+    }
+
+    public function activeSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->with(['plan', 'planPrice.plan'])
+            ->whereDate('starts_at', '<=', today())
+            ->whereDate('ends_at', '>=', today())
+            ->latest('starts_at')
+            ->first();
     }
 
     public function contract()
@@ -199,13 +209,62 @@ class Company extends Model implements HasAvatar
 
     public function carLimitReached()
     {
-        $carLimit = $this->plan()?->car_limit ?? 0;
-        return $carLimit > 0 && $this->cars()->count() >= $carLimit;
+        return ! $this->canCreateMoreCars();
     }
 
     public function userLimit(): ?int
     {
         return $this->plan()?->user_limit;
+    }
+
+    public function activeUserCount(): int
+    {
+        return $this->users()->where('is_active', true)->count();
+    }
+
+    public function remainingUserSeats(): ?int
+    {
+        $limit = $this->userLimit();
+        return $limit === null ? null : max($limit - $this->activeUserCount(), 0);
+    }
+
+    public function hasMultiUserAccess(): bool
+    {
+        if (! $this->activeSubscription()) {
+            return false;
+        }
+
+        $limit = $this->userLimit();
+        return $limit === null || $limit > 1;
+    }
+
+    public function canCreateMoreUsers(): bool
+    {
+        $limit = $this->userLimit();
+        return $this->hasMultiUserAccess()
+            && ($limit === null || $this->activeUserCount() < $limit);
+    }
+
+    public function carLimit(): ?int
+    {
+        return $this->plan()?->car_limit;
+    }
+
+    public function currentCarCount(): int
+    {
+        return $this->cars()->count();
+    }
+
+    public function remainingCarSlots(): ?int
+    {
+        $limit = $this->carLimit();
+        return $limit === null || $limit <= 0 ? null : max($limit - $this->currentCarCount(), 0);
+    }
+
+    public function canCreateMoreCars(): bool
+    {
+        $limit = $this->carLimit();
+        return $limit === null || $limit <= 0 || $this->currentCarCount() < $limit;
     }
 
     public function subscriptionDaysLeft(): ?int

@@ -54,40 +54,6 @@
 
         <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
 
-            {{-- Booking Summary --}}
-            <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 xl:col-span-7">
-                <div class="border-b border-gray-100 px-6 py-5 dark:border-white/5">
-                    <h2 class="font-semibold text-gray-950 dark:text-white">Booking Summary</h2>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Current rental activity at a glance.</p>
-                </div>
-
-                <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-white/5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                    @foreach($bookingItems as $item)
-                        <div class="px-6 py-5">
-                            <div class="flex items-center gap-2">
-                                <span class="h-2 w-2 rounded-full {{ $item['dot'] }}"></span>
-                                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ $item['label'] }}</span>
-                            </div>
-
-                            <div class="mt-3 flex items-baseline gap-2">
-                                <span class="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
-                                    {{ number_format($item['count']) }}
-                                </span>
-                                <span class="text-xs text-gray-400">{{ $item['hint'] }}</span>
-                            </div>
-
-                            <div class="mt-6">
-                                <p class="text-[11px] text-gray-400">{{ $item['balanceLabel'] }}</p>
-                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-100">
-                                    ₱{{ number_format($item['balance'], 2) }}
-                                </p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-
-
             {{-- Financial Snapshot --}}
             <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-gray-900 xl:col-span-5">
                 <div class="flex items-start justify-between gap-4">
@@ -146,6 +112,40 @@
                             {{ number_format($finance['bookings']) }}
                         </p>
                     </div>
+                </div>
+            </div>
+
+
+            {{-- Booking Summary --}}
+            <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 xl:col-span-7">
+                <div class="border-b border-gray-100 px-6 py-5 dark:border-white/5">
+                    <h2 class="font-semibold text-gray-950 dark:text-white">Booking Summary</h2>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Current rental activity at a glance.</p>
+                </div>
+
+                <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-white/5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    @foreach($bookingItems as $item)
+                        <div class="px-6 py-5">
+                            <div class="flex items-center gap-2">
+                                <span class="h-2 w-2 rounded-full {{ $item['dot'] }}"></span>
+                                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ $item['label'] }}</span>
+                            </div>
+
+                            <div class="mt-3 flex items-baseline gap-2">
+                                <span class="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
+                                    {{ number_format($item['count']) }}
+                                </span>
+                                <span class="text-xs text-gray-400">{{ $item['hint'] }}</span>
+                            </div>
+
+                            <div class="mt-6">
+                                <p class="text-[11px] text-gray-400">{{ $item['balanceLabel'] }}</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                    ₱{{ number_format($item['balance'], 2) }}
+                                </p>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 

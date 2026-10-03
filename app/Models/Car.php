@@ -56,19 +56,12 @@ class Car extends Model
 
     public static function isAvailableAt($carId, $startDateTime, $endDateTime = null, $excludeBookingId = null)
     {
-        $start = Carbon::parse($startDateTime);
-        $end = $endDateTime ? Carbon::parse($endDateTime) : $start->copy()->addMinutes(30);
-      
-        $overlapExists = Booking::where('car_id', $carId)
-            ->when($excludeBookingId, function ($query) use ($excludeBookingId) {
-                $query->where('id', '!=', $excludeBookingId);
-            })
-            ->where('start_datetime', '<', $end)
-            ->where('end_datetime', '>', $start)
-            ->where('status', 'approved')
-            ->exists();
-        
-        return ! $overlapExists;
+        return app(\App\Services\VehicleAvailabilityService::class)->isAvailable(
+            (int) $carId,
+            $startDateTime,
+            $endDateTime,
+            $excludeBookingId ? (int) $excludeBookingId : null,
+        );
     }
 
     // public static function isAvailableAt($carId, $startDateTime, $endDateTime = null, $excludeBookingId = null)

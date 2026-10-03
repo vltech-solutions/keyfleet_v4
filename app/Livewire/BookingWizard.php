@@ -257,7 +257,7 @@ class BookingWizard extends Component implements HasForms
         $reservationNumber = $this->generateReservationNumber();
 
         //second step save the reservation
-        $reservation = Reservation::create([
+        $reservation = app(\App\Services\VehicleAvailabilityService::class)->createReservation([
             'customer_id'     => $customer->id,
             'start_date'      => Carbon::parse($this->start_date . ' ' . $this->start_time),
             'end_date'        => Carbon::parse($this->end_date . ' ' . $this->end_time),
@@ -370,21 +370,14 @@ class BookingWizard extends Component implements HasForms
         $start = Carbon::parse("{$this->start_date} {$this->start_time}");
         $end   = Carbon::parse("{$this->end_date} {$this->end_time}");
 
-        $unavailableCarIds = Booking::where('status', 'approved')
-            ->where(function ($q) use ($start, $end) {
-                $q->whereBetween('start_datetime', [$start, $end])  
-                ->orWhereBetween('end_datetime', [$start, $end])   
-                ->orWhere(function ($q2) use ($start, $end) {
-                    $q2->where('start_datetime', '<=', $start)    
-                        ->where('end_datetime', '>=', $end);
-                });
-            })
-            ->pluck('car_id');
-
-        $cars =  Car::with('carType')
+        $availability = app(\App\Services\VehicleAvailabilityService::class);
+        $cars = Car::with('carType')
             ->where('company_id', $this->company->id)
-            ->whereNotIn('id', $unavailableCarIds)
-            ->get();
+            ->get()
+            ->filter(fn (Car $car): bool => $availability->isAvailable(
+                (int) $car->getKey(), $start, $end,
+            ))
+            ->values();
 
         $this->carTypes = $cars->pluck('carType')->unique('id');
 

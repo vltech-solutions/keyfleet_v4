@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\RoleResource\Pages;
+use App\Models\Company;
 use App\Models\Permission;
 use App\Models\Role;
 use Filament\Facades\Filament;
@@ -160,24 +161,39 @@ class RoleResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasPermission('roles.view') ?? false;
+        return (auth()->user()?->hasPermission('roles.view') ?? false)
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
+    private static function tenantCompany(): ?Company
+    {
+        $tenant = Filament::getTenant();
+        return $tenant instanceof Company ? $tenant : null;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasPermission('roles.create') ?? false;
+        return (auth()->user()?->hasPermission('roles.create') ?? false)
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false);
     }
 
     public static function canEdit(Model $record): bool
     {
         return (auth()->user()?->hasPermission('roles.update') ?? false)
-            && (int) $record->company_id === (int) Filament::getTenant()?->getKey();
+            && (int) $record->company_id === (int) Filament::getTenant()?->getKey()
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false);
     }
 
     public static function canDelete(Model $record): bool
     {
         return (auth()->user()?->hasPermission('roles.delete') ?? false)
             && (int) $record->company_id === (int) Filament::getTenant()?->getKey()
+            && (static::tenantCompany()?->hasMultiUserAccess() ?? false)
             && ! $record->is_protected
             && ! $record->users()->exists();
     }

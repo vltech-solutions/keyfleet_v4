@@ -44,23 +44,10 @@ class ViewReservation extends EditRecord
     {
         $start = $this->record->start_date;
         $end   = $this->record->end_date;
-        $carId = $this->record->selected_car_id;
-
-        // check availability
-        $isAvailable = true;
-        if ($start && $carId) {
-            $isAvailable = Car::isAvailableAt($carId, $start, $end, $this->record->id);
-        }
-
-        if (! $isAvailable && $this->record->status === 'pending') {
-            $this->record->update([
-                'status' => 'declined',
-                'decline_reason' => 'Dates are not available'
-            ]);
-        }
 
          if ($end && $end->isPast()) {
             $this->record->update([
+                'datetime_declined' => now(),
                 'status' => 'declined',
                 'decline_reason' => 'Past Reservation'
             ]);
@@ -319,7 +306,7 @@ class ViewReservation extends EditRecord
                             $companyEarnings = $totalDue;
                         }
 
-                        $booking = Booking::create([
+                        $booking = app(\App\Services\VehicleAvailabilityService::class)->approveReservation($record, [
                             'car_id'            => $record->selected_car_id,
                             'source_id'         => $record->source_id,
                             'start_datetime'    => $record->start_date,
@@ -354,11 +341,6 @@ class ViewReservation extends EditRecord
                             'balance'           => $totalDue,
                             'partner_commission'=> $partnerCommission,
                             'company_earnings'  => $companyEarnings,
-                        ]);
-
-                        $record->update([
-                            'booking_id' => $booking->id,
-                            'status' => 'approved',
                         ]);
 
                         $companyInfo = Company::find($record->company_id);
@@ -438,7 +420,7 @@ class ViewReservation extends EditRecord
                         $record->update([
                             'decline_reason' => $data['decline_reason'],
                             'status' => 'declined',
-                            'declined_at' => now()
+                            'datetime_declined' => now()
                         ]);
                       
                         Notification::make()
