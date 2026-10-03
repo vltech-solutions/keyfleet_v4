@@ -29,7 +29,7 @@ class Subscription extends Model
         'payment_source',
         'paymongo_fee',
         'paid_at',
-        'net_amount'
+        'net_amount',
     ];
 
     public function plan()
@@ -57,9 +57,19 @@ class Subscription extends Model
         return $this->hasMany(AddonSubscription::class, 'subscription_id');
     }
 
+    public function agentCommission()
+    {
+        return $this->hasOne(AgentCommission::class);
+    }
+
     protected $casts = [
         'starts_at' => 'date',
         'ends_at' => 'date',
+        'paid_at' => 'datetime',
+        'refund_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'total_due' => 'decimal:2',
     ];
 
     protected static function booted()
@@ -68,6 +78,15 @@ class Subscription extends Model
             if ($subscription->plan_price_id) {
                 $planPrice = PlanPrice::find($subscription->plan_price_id);
                 $subscription->plan_id = $planPrice ? $planPrice->plan_id : null;
+            }
+        });
+
+        static::updated(function (Subscription $subscription): void {
+            if ($subscription->wasChanged('refund_amount') && (float) $subscription->refund_amount > 0) {
+                app(\App\Services\AgentCommissionService::class)->reverseForSubscription(
+                    $subscription,
+                    'Source subscription payment was refunded or reversed.',
+                );
             }
         });
     }

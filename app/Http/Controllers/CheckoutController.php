@@ -9,6 +9,7 @@ use App\Mail\SubscriptionPaymentSuccess;
 use App\Models\AddonSubscription;
 use App\Models\VoucherUsage;
 use App\Services\ReferralRewardService;
+use App\Services\AgentCommissionService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -87,6 +88,7 @@ class CheckoutController extends Controller
         }
 
         ReferralRewardService::handleConversion($subscription);
+        app(AgentCommissionService::class)->createForSubscription($subscription);
 
         $slug = Filament::getTenant()?->slug;
 

@@ -317,12 +317,30 @@ class Company extends Model implements HasAvatar
         });
 
         static::created(function ($company) {
-            if ($company->referred_by_company_id) {
+            $code = session('ref');
+            $agent = $code ? Agent::with('program')->where('referral_code', $code)->first() : null;
+
+            if ($agent?->canReferAt()) {
+                CompanyReferral::create([
+                    'referrer_user_id' => $agent->user_id,
+                    'agent_id' => $agent->id,
+                    'agent_program_id' => $agent->agent_program_id,
+                    'referred_company_id' => $company->id,
+                    'referral_code' => $code,
+                    'program_type' => CompanyReferral::PROGRAM_AGENT,
+                    'referred_at' => now(),
+                ]);
+            } elseif ($company->referred_by_company_id) {
                 CompanyReferral::create([
                     'referrer_company_id' => $company->referred_by_company_id,
                     'referred_company_id' => $company->id,
+                    'referral_code' => $code,
+                    'program_type' => CompanyReferral::PROGRAM_CUSTOMER,
+                    'referred_at' => now(),
                 ]);
             }
+
+            session()->forget('ref');
 
             // add the default funds
             FundType::create([

@@ -179,6 +179,12 @@ class AppPanelProvider extends PanelProvider
                     ->visible(fn (): bool => auth()->user()?->hasPermission('subscription.view') ?? false)
                     ->icon('heroicon-o-trophy')
                     ->sort(3),
+                UserMenuItem::make()
+                    ->label('Open Agent Portal')
+                    ->url('/agent')
+                    ->visible(fn (): bool => auth()->user()?->agentProfile?->status === \App\Models\Agent::STATUS_ACTIVE)
+                    ->icon('heroicon-o-briefcase')
+                    ->sort(4),
             ])
             ->navigationGroups([
                 'Transactions',      

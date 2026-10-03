@@ -3,25 +3,24 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use NotificationChannels\WebPush\HasPushSubscriptions;
-use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
-
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements FilamentUser, HasTenants
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasPushSubscriptions;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -79,6 +78,11 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->belongsTo(Role::class);
     }
 
+    public function agentProfile()
+    {
+        return $this->hasOne(Agent::class);
+    }
+
     public function getTenants(Panel $panel): Collection
     {
         return $this->company ? collect([$this->company]) : collect();
@@ -93,6 +97,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     {
         if ($panel->getId() === 'admin') {
             return $this->is_admin && $this->is_active;
+        }
+
+        if ($panel->getId() === 'agent') {
+            return $this->is_active && ($this->agentProfile?->status === Agent::STATUS_ACTIVE);
         }
 
         return $this->is_active && $this->company_id !== null && $this->role_id !== null;

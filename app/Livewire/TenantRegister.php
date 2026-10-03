@@ -11,6 +11,7 @@ use App\Models\FundType;
 use App\Models\Plan;
 use App\Models\PlanPrice;
 use App\Models\Subscription;
+use App\Models\CompanyReferral;
 use Filament\Forms\Form;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -32,6 +33,13 @@ class TenantRegister extends Component implements HasForms
         'company' => ['name' => ''],
         'user' => ['name' => '', 'email' => '', 'password' => ''],
     ];
+
+    public function mount(): void
+    {
+        if (request()->filled('ref')) {
+            session(['ref' => trim((string) request()->query('ref'))]);
+        }
+    }
 
     public function form(Form $form): Form
     {
@@ -84,6 +92,11 @@ class TenantRegister extends Component implements HasForms
         ]);
 
         $user->companies()->attach($tenant->id);
+
+        CompanyReferral::where('referred_company_id', $tenant->id)
+            ->whereNull('referrer_user_id')
+            ->where('program_type', CompanyReferral::PROGRAM_CUSTOMER)
+            ->update(['referrer_user_id' => $tenant->referredBy?->users()->oldest()->value('id')]);
 
         $freeTrialPrice = PlanPrice::whereHas('plan', function ($query) {
             $query->where('name', 'FREE TRIAL - Beta');

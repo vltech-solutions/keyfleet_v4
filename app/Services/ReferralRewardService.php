@@ -14,24 +14,33 @@ class ReferralRewardService
         $company = $subscription->company;
 
         $referral = CompanyReferral::where('referred_company_id', $company->id)
+            ->where('program_type', CompanyReferral::PROGRAM_CUSTOMER)
             ->where('is_converted', false)
             ->first();
 
-        if (! $referral) return;
+        if (! $referral) {
+            return;
+        }
 
         DB::transaction(function () use ($referral) {
             $referrerCompany = $referral->referrer;
             $referrerSubscription = $referrerCompany->subscription;
 
-            if (! $referrerSubscription) return;
+            if (! $referrerSubscription) {
+                return;
+            }
 
             $plan = $referrerSubscription->plan;
-            $rewardDays = $plan->referral_reward_days ?? 15;
+            $rewardDays = $plan->referral_reward_days ?? 0;
+
+            if ($rewardDays <= 0) {
+                return;
+            }
 
             $currentEnd = Carbon::parse($referrerSubscription->ends_at);
             $referrerSubscription->update([
                 'ends_at' => $currentEnd->addDays($rewardDays),
-                'referral_bonus_days' => $rewardDays
+                'referral_bonus_days' => $rewardDays,
             ]);
 
             $referral->update([
