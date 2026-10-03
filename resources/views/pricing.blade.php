@@ -29,7 +29,9 @@
                     }
                     
                     // Define features based on plan
+                    $userLabel = ($plan->user_limit > 1) ? 'users' : 'user';
                     $features = [
+                        'user_limit' => "{$plan->user_limit} ".$userLabel,
                         'vehicle_limit' => "Manage {$plan->car_limit} vehicles",
                         'advanced_reports' => true,
                         'premium_features' => true,
@@ -96,6 +98,12 @@
 
                         <!-- Features -->
                         <ul class="mt-6 space-y-2.5 text-sm text-gray-600 dark:text-gray-300 flex-1">
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>{{ $features['user_limit'] }}</span>
+                            </li>
                             <li class="flex items-start gap-2">
                                 <svg class="w-5 h-5 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -230,6 +238,12 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr>
+                            <td class="p-4 font-medium text-gray-700 dark:text-gray-300 border-b dark:border-gray-700">User Limit</td>
+                            @foreach ($plans->take(4) as $plan)
+                                <td class="p-4 text-center border-b dark:border-gray-700 font-bold text-gray-900 dark:text-white">{{ $plan->user_limit }}</td>
+                            @endforeach
+                        </tr>
                         <tr>
                             <td class="p-4 font-medium text-gray-700 dark:text-gray-300 border-b dark:border-gray-700">Vehicle Limit</td>
                             @foreach ($plans->take(4) as $plan)

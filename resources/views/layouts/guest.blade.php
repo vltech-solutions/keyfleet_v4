@@ -13,6 +13,15 @@
     
     <!-- Styles -->
     @vite(['resources/css/app.css'])
+
+    <style>
+        @media (prefers-color-scheme: dark) {
+            .dark\:border-gray-700 {
+                --tw-border-opacity: 1;
+                border-color: transparent !important;
+            }
+        }
+    </style>
     @livewireStyles
     
     @stack('styles')
