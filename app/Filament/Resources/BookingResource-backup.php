@@ -2,59 +2,69 @@
 
 namespace App\Filament\Resources;
 
-use App\Exports\BookingExport;
-use App\Exports\BookingTemplateExport;
 use App\Filament\Resources\BookingResource\Pages;
-use App\Filament\Resources\BookingResource\Pages\ViewBooking;
-use App\Imports\BookingsImport;
-use App\Models\Booking;
 use App\Models\Car;
+use App\Models\Booking;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Resources\Resource;
+use Filament\Facades\Filament;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Actions\Action as FormAction;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Storage;
+use Filament\Notifications\Notification;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use App\Imports\BookingsImport;
+use App\Exports\BookingTemplateExport;
+use App\Exports\BookingExport;
+use App\Filament\Widgets\BookingStatsWidget;
+use Filament\Forms\Components\Wizard;
+use Filament\Forms\Components\Wizard\Step;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\View;
 use App\Models\Customer;
 use App\Models\FundType;
 use App\Models\Partners;
 use App\Models\Reservation;
-use Filament\Facades\Filament;
-use Filament\Forms;
-use Filament\Forms\Components\Fieldset;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\View;
-use Filament\Forms\Components\Wizard;
-use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
+use Icetalker\FilamentTableRepeater\Forms\Components\TableRepeater;
+use Filament\Tables\Enums\ActionsPosition;
+use Coolsam\Flatpickr\Forms\Components\Flatpickr;
+use Filament\Actions\ActionGroup;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Support\Enums\ActionSize;
-use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ViewColumn;
-use Filament\Tables\Enums\FiltersLayout;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
-use Icetalker\FilamentTableRepeater\Forms\Components\TableRepeater;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\HtmlString;
-use Maatwebsite\Excel\Facades\Excel;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+use App\Filament\Pages\BookingInspectionPage;
+use App\Filament\Resources\BookingResource\Pages\ViewBooking;
+use Filament\Forms\Components\ViewField;
+use PhpOffice\PhpSpreadsheet\Calculation\Statistical\Distributions\F;
 
 class BookingResource extends TenantResource
 {
     protected static ?string $model = Booking::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+
     protected static ?int $navigationSort = 1;
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     public static function getNavigationGroup(): ?string
     {
@@ -66,11 +76,7 @@ class BookingResource extends TenantResource
         return 1;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | FORM
-    |--------------------------------------------------------------------------
-    */
+    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     public static function form(Form $form): Form
     {
@@ -749,1146 +755,782 @@ class BookingResource extends TenantResource
             ]);
     }
 
-    protected static function rentalDetailsStep(): Step
+    public static function getEloquentQuery(): Builder
     {
-        return Step::make('Rental Details')
-            ->description('Vehicle and rental schedule')
-            ->icon('heroicon-m-calendar-days')
-            ->schema([
-                Section::make('Vehicle')
-                    ->description('Choose the vehicle for this booking.')
-                    ->schema([
-                        Select::make('car_id')
-                            ->label('Vehicle')
-                            ->relationship(
-                                name: 'car',
-                                titleAttribute: 'name',
-                                modifyQueryUsing: fn ($query) => $query
-                                    ->whereNull('deleted_at')
-                                    ->where('is_available', true)
-                            )
-                            ->getOptionLabelFromRecordUsing(function (Car $record) {
-                                $owner = $record->partner?->name ?? 'Company Owned';
-
-                                return collect([
-                                    $record->name,
-                                    trim(($record->brand ?? '') . ' ' . ($record->model ?? '')),
-                                    $record->plate_number,
-                                    $owner,
-                                ])->filter()->implode(' · ');
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->required()
-                            ->afterStateUpdated(function ($state, callable $set) {
-                                $car = Car::find($state);
-
-                                $set('daily_rate', $car?->price_starts_at ?? 0);
-                                $set('start_datetime', null);
-                                $set('end_datetime', null);
-                                $set('days_rented', 0);
-                                $set('extend_hours', 0);
-                                $set('extend_due', 0);
-                                $set('delivery_fee', 0);
-                                $set('discount', 0);
-                                $set('driver_fee', 0);
-                                $set('security_deposit', 0);
-                                $set('fuel_charge', 0);
-                                $set('out_of_bounds', 0);
-                                $set('rfid', 0);
-                                $set('damages', 0);
-                                $set('carwash_fee', 0);
-                                $set('insurance', 0);
-                                $set('total_rent_due', 0);
-                                $set('total_due', 0);
-                                $set('paid_amount', 0);
-                                $set('balance', 0);
-                                $set('company_earnings', 0);
-                            }),
-
-                        Hidden::make('id')
-                            ->dehydrated(false),
-                    ]),
-
-                Section::make('Rental Schedule')
-                    ->description('Set pickup and return schedule.')
-                    ->columns([
-                        'default' => 1,
-                        'md' => 2,
-                    ])
-                    ->schema([
-                        DateTimePicker::make('start_datetime')
-                            ->label('Pickup Date & Time')
-                            ->native(true)
-                            ->seconds(false)
-                            ->displayFormat('M j, Y h:i A')
-                            ->live()
-                            ->required()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                $carId = $get('car_id');
-
-                                if (! $carId) {
-                                    $set('start_datetime', null);
-                                    self::notifyError('Please select a vehicle first.');
-                                    return;
-                                }
-
-                                if (
-                                    $state &&
-                                    ! Car::isAvailableAt(
-                                        $carId,
-                                        $state,
-                                        $get('id')
-                                    )
-                                ) {
-                                    $set('start_datetime', null);
-                                    self::notifyError(
-                                        'Vehicle is not available at the selected pickup date/time.'
-                                    );
-                                    return;
-                                }
-
-                                self::updateRentalDuration($set, $get);
-                            }),
-
-                        DateTimePicker::make('end_datetime')
-                            ->label('Return Date & Time')
-                            ->native(true)
-                            ->seconds(false)
-                            ->displayFormat('M j, Y h:i A')
-                            ->minDate(fn ($get) => $get('start_datetime'))
-                            ->live()
-                            ->required()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                $carId = $get('car_id');
-                                $start = $get('start_datetime');
-
-                                if (! $carId) {
-                                    $set('end_datetime', null);
-                                    self::notifyError('Please select a vehicle first.');
-                                    return;
-                                }
-
-                                if (
-                                    $start &&
-                                    $state &&
-                                    Carbon::parse($state)->lessThan(Carbon::parse($start))
-                                ) {
-                                    $set('end_datetime', null);
-                                    self::notifyError(
-                                        'Return date/time cannot be earlier than pickup.'
-                                    );
-                                    return;
-                                }
-
-                                if (
-                                    $state &&
-                                    $start &&
-                                    ! Car::isAvailableAt(
-                                        $carId,
-                                        $start,
-                                        $state,
-                                        $get('id')
-                                    )
-                                ) {
-                                    $set('start_datetime', null);
-                                    $set('end_datetime', null);
-                                    $set('days_rented', 0);
-                                    $set('extend_hours', 0);
-
-                                    self::notifyError(
-                                        'Vehicle is not available for the selected schedule.'
-                                    );
-
-                                    return;
-                                }
-
-                                self::updateRentalDuration($set, $get);
-                                calculateTotalBookingDue($set, $get);
-                            }),
-
-                        Select::make('source_id')
-                            ->label('Booking Source')
-                            ->relationship('source', 'source')
-                            ->required()
-                            ->columnSpanFull(),
-                    ]),
-            ]);
+        return parent::getEloquentQuery();
     }
-
-    protected static function customerAndTripStep(): Step
-    {
-        return Step::make('Customer & Trip')
-            ->description('Renter and trip information')
-            ->icon('heroicon-m-user')
-            ->schema([
-                Section::make('Customer Information')
-                    ->columns([
-                        'default' => 1,
-                        'md' => 2,
-                    ])
-                    ->schema([
-                        TextInput::make('renter_name')
-                            ->label('Renter Name')
-                            ->required()
-                            ->readOnly(fn ($get) => $get('using_existing_customer'))
-                            ->suffixActions([
-                                Forms\Components\Actions\Action::make('selectRenter')
-                                    ->label('Existing Customer')
-                                    ->icon('heroicon-m-user')
-                                    ->modalHeading('Select Existing Customer')
-                                    ->modalWidth('md')
-                                    ->modalButton('Use Customer')
-                                    ->disabled(! auth()->user()->hasActiveSubscription())
-                                    ->form([
-                                        Select::make('renter_id')
-                                            ->label('Customer')
-                                            ->options(
-                                                Customer::query()
-                                                    ->where(
-                                                        'company_id',
-                                                        Filament::getTenant()?->id
-                                                    )
-                                                    ->orderBy('customer_name')
-                                                    ->pluck('customer_name', 'id')
-                                            )
-                                            ->searchable()
-                                            ->required(),
-                                    ])
-                                    ->action(function (array $data, callable $set) {
-                                        $customer = Customer::find($data['renter_id']);
-
-                                        if (! $customer) {
-                                            return;
-                                        }
-
-                                        $set('renter_name', $customer->customer_name);
-                                        $set('contact_number', $customer->contact_number);
-                                        $set('renter_address', $customer->address);
-                                        $set('customer_id', $customer->id);
-                                        $set('using_existing_customer', true);
-                                    }),
-
-                                Forms\Components\Actions\Action::make('resetRenter')
-                                    ->label('Clear Customer')
-                                    ->icon('heroicon-m-x-circle')
-                                    ->visible(fn ($get) => $get('using_existing_customer'))
-                                    ->action(function (callable $set) {
-                                        $set('renter_name', null);
-                                        $set('contact_number', null);
-                                        $set('renter_address', null);
-                                        $set('customer_id', null);
-                                        $set('using_existing_customer', false);
-                                    }),
-                            ]),
-
-                        TextInput::make('contact_number')
-                            ->label('Contact Number')
-                            ->tel()
-                            ->required(),
-
-                        TextInput::make('renter_address')
-                            ->label('Address')
-                            ->placeholder('Customer address')
-                            ->columnSpanFull()
-                            ->required(),
-
-                        Hidden::make('customer_id'),
-
-                        Hidden::make('using_existing_customer')
-                            ->default(false)
-                            ->afterStateHydrated(
-                                fn ($set, $record) => $set(
-                                    'using_existing_customer',
-                                    filled($record?->customer_id)
-                                )
-                            ),
-                    ]),
-
-                Section::make('Trip Details')
-                    ->columns([
-                        'default' => 1,
-                        'md' => 2,
-                    ])
-                    ->schema([
-                        Checkbox::make('with_driver')
-                            ->label('Include a driver'),
-
-                        TextInput::make('other_drivers')
-                            ->label('Other Driver')
-                            ->placeholder('Optional driver name'),
-
-                        TextInput::make('destination')
-                            ->label('Destination'),
-
-                        TextInput::make('delivery_address')
-                            ->label('Delivery Address')
-                            ->placeholder('Where the vehicle will be delivered'),
-
-                        TextInput::make('return_address')
-                            ->label('Return Address')
-                            ->placeholder('Where the vehicle will be returned'),
-
-                        Textarea::make('remarks')
-                            ->label('Remarks')
-                            ->rows(3)
-                            ->maxLength(100),
-
-                    ]),
-            ]);
-    }
-
-    protected static function pricingStep(): Step
-    {
-        return Step::make('Pricing')
-            ->description('Rental rate and charges')
-            ->icon('heroicon-m-banknotes')
-            ->schema([
-                Section::make('Core Pricing')
-                    ->description('Primary charges used for this rental.')
-                    ->columns([
-                        'default' => 1,
-                        'sm' => 2,
-                        'xl' => 3,
-                    ])
-                    ->schema([
-                        TextInput::make('days_rented')
-                            ->label('Rental Days')
-                            ->default(0)
-                            ->readOnly(),
-
-                        TextInput::make('extend_hours')
-                            ->label('Extension Hours')
-                            ->default(0)
-                            ->readOnly(),
-
-                        self::moneyField('daily_rate', 'Daily Rate', true),
-                        self::moneyField('extend_due', 'Extension Fee', true),
-                        self::moneyField('delivery_fee', 'Delivery Fee', true),
-                        self::moneyField('driver_fee', 'Driver Fee', true),
-                        self::moneyField('security_deposit', 'Security Deposit', true),
-                        self::moneyField('discount', 'Discount', true),
-                    ]),
-
-                Section::make('Additional Charges')
-                    ->description('Optional charges based on actual usage or vehicle condition.')
-                    ->icon('heroicon-o-plus-circle')
-                    ->collapsible()
-                    ->collapsed()
-                    ->columns([
-                        'default' => 1,
-                        'sm' => 2,
-                        'xl' => 3,
-                    ])
-                    ->schema([
-                        self::moneyField('fuel_charge', 'Fuel Charge'),
-                        self::moneyField('out_of_bounds', 'Out-of-Bounds Charge'),
-                        self::moneyField('rfid', 'RFID Charge'),
-                        self::moneyField('damages', 'Damage Fees'),
-                        self::moneyField('carwash_fee', 'Car Wash Fee'),
-                        self::moneyField('insurance', 'Insurance Fee'),
-                    ]),
-            ]);
-    }
-
-    protected static function billingStep(): Step
-    {
-        return Step::make('Billing Summary')
-            ->description('Review totals before saving')
-            ->icon('heroicon-m-calculator')
-            ->schema([
-                Section::make('Booking Total')
-                    ->description('Computed financial summary for this booking.')
-                    ->columns([
-                        'default' => 1,
-                        'sm' => 2,
-                        'xl' => 4,
-                    ])
-                    ->schema([
-                        TextInput::make('total_rent_due')
-                            ->label('Total Rent')
-                            ->prefix('₱')
-                            ->default(0)
-                            ->readOnly(),
-
-                        TextInput::make('total_due')
-                            ->label('Grand Total')
-                            ->prefix('₱')
-                            ->default(0)
-                            ->readOnly()
-                            ->extraInputAttributes([
-                                'class' => 'font-bold',
-                            ]),
-
-                        TextInput::make('paid_amount')
-                            ->label('Amount Paid')
-                            ->prefix('₱')
-                            ->numeric()
-                            ->default(0)
-                            ->readOnly(),
-
-                        TextInput::make('balance')
-                            ->label('Balance')
-                            ->prefix('₱')
-                            ->default(0)
-                            ->readOnly()
-                            ->extraInputAttributes([
-                                'class' => 'font-bold',
-                            ]),
-
-                        TextInput::make('company_earnings')
-                            ->label('Company Commission')
-                            ->prefix('₱')
-                            ->default(0)
-                            ->visible(function ($get) {
-                                $car = Car::find($get('car_id'));
-
-                                return $car?->partner_id !== null;
-                            }),
-                    ]),
-            ]);
-    }
-
-    protected static function moneyField(
-        string $name,
-        string $label,
-        bool $required = false
-    ): TextInput {
-        return TextInput::make($name)
-            ->label($label)
-            ->prefix('₱')
-            ->numeric()
-            ->minValue(0)
-            ->default(0)
-            ->required($required)
-            ->live(onBlur: true)
-            ->afterStateUpdated(
-                fn ($set, $get) => calculateTotalBookingDue($set, $get)
-            );
-    }
-
-    protected static function updateRentalDuration(
-        callable $set,
-        callable $get
-    ): void {
-        $start = $get('start_datetime');
-        $end = $get('end_datetime');
-
-        if (! $start || ! $end) {
-            return;
-        }
-
-        $hours = Carbon::parse($start)
-            ->diffInHours(Carbon::parse($end));
-
-        if ($hours < 24) {
-            $set('days_rented', 1);
-            $set('extend_hours', 0);
-            return;
-        }
-
-        $set('days_rented', floor($hours / 24));
-        $set('extend_hours', $hours % 24);
-    }
-
-    protected static function notifyError(string $message): void
-    {
-        Notification::make()
-            ->title($message)
-            ->danger()
-            ->send();
-    }
-
-    protected static function contractPreviewStep(callable $get): array
-    {
-        if (! $get('id')) {
-            return [];
-        }
-
-        $company = auth()->user()->company;
-
-        if (! $company?->contract) {
-            return [];
-        }
-
-        return [
-            Step::make('Contract')
-                ->description('Preview generated rental contract')
-                ->icon('heroicon-m-document-text')
-                ->schema([
-                    View::make('filament.components.booking-contract-preview')
-                        ->viewData([
-                            'previewUrl' => route(
-                                'contract.preview',
-                                ['booking' => $get('id')]
-                            ),
-                        ]),
-                ]),
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | TABLE
-    |--------------------------------------------------------------------------
-    */
 
     protected static function getTableQuery(): Builder
     {
-        return Booking::query()
-            ->where('status', '!=', 'quotation')
-            ->with(['car.partner']);
+        return Booking::query()->where('status','!=', 'quotation');
     }
 
     public static function table(Table $table): Table
-    {
-        $headerActions = self::tableHeaderActions();
-        $rowActions = self::tableRowActions();
+    {   
+        $importAction = Action::make('importFromExcel')
+            ->visible(fn () => auth()->user()?->hasPermission('bookings.import') ?? false)
+            ->label('Import')
+            ->button() 
+            ->color('gray') 
+            ->outlined()
+            ->modalWidth('md')
+            ->icon('heroicon-s-arrow-down-tray')
+            ->form([
+                Forms\Components\FileUpload::make('file')
+                    ->label('Excel File')
+                    ->helperText('Note: Use dd/mm/YYYY HH:mm format (e.g. 26/08/2023 13:00).')
+                    ->required()
+                    ->acceptedFileTypes([
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'text/csv',
+                    ])
+                    ->storeFiles(false),
+            ])
+            ->action(function (array $data): void {
+                $import = new BookingsImport;
+                Excel::import($import, $data['file']);
 
+                if ($import->failures()->isNotEmpty()) {
+                    foreach ($import->failures() as $failure) {
+                        $row = $failure->row()+1;
+                        Notification::make()
+                            ->title("Row {$row} Error")
+                            ->body(implode(', ', $failure->errors()))
+                            ->danger()
+                            ->duration(2500)
+                            ->send();
+                    }
+                    return;
+                }
+                
+                Notification::make()
+                    ->title('Import Complete')
+                    ->body('Bookings have been imported successfully.')
+                    ->success()
+                    ->send();
+            });
+            
+        $actions = (auth()->user()->hasActiveSubscription()) ? 
+            [
+                CreateAction::make()
+                    ->label('Add New'),
+                $importAction,
+                Action::make('downloadTemplate')
+                    ->label('Download Template')
+                    ->button() 
+                    ->color('gray') 
+                    ->outlined()
+                    ->tooltip('Download a blank template for importing bookings')
+                    ->icon('heroicon-s-document-arrow-down')
+                    ->action(fn () => Excel::download(new BookingTemplateExport, 'booking-template.xlsx')),
+                Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
+                    ->label('Export')
+                    ->button()
+                    ->color('gray')
+                    ->outlined()
+                    ->icon('heroicon-s-arrow-up-tray')
+                    ->action(function ($livewire): BinaryFileResponse {
+                        // Get the currently filtered query from the table
+                        $query = $livewire->getFilteredTableQuery();
+
+                        // Pass it to your export class
+                        return Excel::download(new BookingExport($query), 'bookings.xlsx');
+                    }),
+            ] : [
+                Action::make('exportToExcel')
+                    ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
+                    ->label('Export')
+                    ->button()
+                    ->color('gray')
+                    ->outlined()
+                    ->icon('heroicon-s-arrow-up-tray')
+                    ->action(function ($livewire): BinaryFileResponse {
+                        // Get the currently filtered query from the table
+                        $query = $livewire->getFilteredTableQuery();
+
+                        // Pass it to your export class
+                        return Excel::download(new BookingExport($query), 'bookings.xlsx');
+                    }),
+            ];
+        
+        $company = filament()->getTenant();
+        $tableActions = (auth()->user()->hasActiveSubscription()) 
+            ? [
+                Tables\Actions\Action::make('addPayment')
+                        ->label('Add Payment')
+                        ->icon('heroicon-o-currency-dollar')
+                        ->color('success')
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled')
+                        ->form([
+                            Forms\Components\Select::make('fund_type_id')
+                                ->label('Fund')
+                                ->options(FundType::pluck('name', 'id'))
+                                ->required(),
+
+                            Forms\Components\TextInput::make('amount')
+                                ->label('Amount')
+                                ->numeric()
+                                ->required(),
+
+                            Forms\Components\TextInput::make('payment_notes')
+                                ->label('Payment Note'),
+
+                            Forms\Components\DatePicker::make('payment_date')
+                                ->label('Payment Date')
+                                ->required()
+                                ->default(now()),
+                        ])
+                        ->action(function ($record, array $data) {
+                            // Create a single payment record for this booking
+                            $record->payments()->create($data);
+
+                            // Recalculate total paid and balance
+                            $totalPaid = $record->payments()->sum('amount');
+                            $record->update([
+                                'paid_amount' => $totalPaid,
+                                'balance' => $record->total_due - $totalPaid,
+                            ]);
+
+                            Notification::make()
+                                ->title('Payment added successfully!')
+                                ->success()
+                                ->send();
+                        })
+                        ->modalWidth('md')
+                        ->modalHeading('Add Booking Payment')
+                        ->modalButton('Save Payment'),
+                    Tables\Actions\Action::make('cancelBooking')
+                        ->label('Cancel Booking')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Cancel Booking')
+                        ->visible(fn ($record) => 
+                            (auth()->user()?->hasPermission('bookings.cancel') ?? false) &&
+                            $record->status !== 'cancelled' &&
+                            $record->end_datetime > now()
+                        )
+                        ->modalSubheading('Are you sure you want to cancel this booking?')
+                        ->modalButton('Yes, Cancel')
+                        ->action(function ($record, array $data = null) {
+                            $record->update(['status' => 'cancelled']);
+
+                            Notification::make()
+                                ->title('Booking cancelled successfully!')
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\Action::make('viewBooking')
+                        ->label('View Booking')
+                        ->icon('heroicon-o-eye')
+                        ->url(fn ($record) => ViewBooking::getUrl(['record' => $record->id])),
+                    Tables\Actions\EditAction::make()->color('gray')
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.update') ?? false) && $record->status !== 'cancelled'),
+                    Tables\Actions\DeleteAction::make()->color('gray')
+                        ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.delete') ?? false) && $record->status !== 'cancelled'),
+            ] : [];
+        
+        // Define columns for desktop
+        $desktopColumns = [
+            ImageColumn::make('car.image')
+                ->label('Rented Car')
+                ->toggleable()
+                ->visibleFrom('md'), // Hide on mobile
+            TextColumn::make('car.name')
+                ->label('')
+                ->badge()
+                ->searchable()
+                ->visibleFrom('md')
+                ->formatStateUsing(function ($state, $record) {
+                    if ($record->car?->trashed()) {
+                        return "{$state} (Deleted)";
+                    }
+                    return $state;
+                })
+                ->color(function ($record) {
+                    return $record->car?->trashed() ? 'danger' : 'primary';
+                }),
+            TextColumn::make('booking_period')
+                ->label('Booking Period')
+                ->html()
+                ->grow(false)
+                ->extraAttributes(['class' => 'w-64 truncate'])
+                ->visibleFrom('md') // Hide on mobile
+                ->getStateUsing(function ($record) {
+                    $start = $record->start_datetime
+                        ? Carbon::parse($record->start_datetime)->format('M d, Y h:i A')
+                        : 'N/A';
+                    $end = $record->end_datetime
+                        ? Carbon::parse($record->end_datetime)->format('M d, Y h:i A')
+                        : 'N/A';
+                    return "
+                        <div style='display: table; width: 100%;'>
+                            <div style='display: table-row;'>
+                                <div style='display: table-cell; color: gray; width: 50px;'>Pickup: </div>
+                                <div style='display: table-cell;padding-left:5px'> {$start}</div>
+                            </div>
+                            <div style='display: table-row;'>
+                                <div style='display: table-cell; color: gray;'>Return: </div>
+                                <div style='display: table-cell;padding-left:5px'> {$end}</div>
+                            </div>
+                        </div>
+                    ";
+                }),
+            TextColumn::make('hours')
+                ->label('Days/Hours')
+                ->badge()
+                ->visibleFrom('md')
+                ->getStateUsing(function ($record) {
+                    if (!$record->start_datetime || !$record->end_datetime) {
+                        return 'N/A';
+                    }
+                    return (Carbon::parse($record->start_datetime)->diffInHours(Carbon::parse($record->end_datetime)) > 24
+                        ? round(Carbon::parse($record->start_datetime)->diffInDays(Carbon::parse($record->end_datetime))) . ' days'
+                        : Carbon::parse($record->start_datetime)->diffInHours(Carbon::parse($record->end_datetime)) . ' hours');
+                }),
+            TextColumn::make('renter_name')
+                ->label('Renter Name')
+                ->searchable()
+                ->visibleFrom('md')
+                ->toggleable(),
+            TextColumn::make('total_due')
+                ->money('PHP')
+                ->label('Total Due')
+                ->searchable()
+                ->toggleable()
+                ->alignRight()
+                ->visibleFrom('md') // Hide on mobile
+                ->summarize([
+                    Tables\Columns\Summarizers\Sum::make()
+                        ->money('PHP')
+                        ->label('')
+                ]),
+            TextColumn::make('paid_amount')
+                ->money('PHP')
+                ->label('Paid Amount')
+                ->searchable()
+                ->toggleable()
+                ->alignRight()
+                ->visibleFrom('md') // Hide on mobile
+                ->summarize([
+                    Tables\Columns\Summarizers\Sum::make()
+                        ->money('PHP')
+                        ->label('')
+                ]),
+            TextColumn::make('balance')
+                ->money('PHP')
+                ->searchable()
+                ->color(fn ($record) => $record->balance > 0 ? 'danger' : 'black')
+                ->toggleable()
+                ->alignRight()
+                ->visibleFrom('md') // Hide on mobile
+                ->summarize([
+                    Tables\Columns\Summarizers\Sum::make()
+                        ->money('PHP')
+                        ->label('')
+                ])
+                ->extraAttributes(fn ($record) => $record->balance > 0
+                    ? ['class' => 'font-bold']
+                    : []
+                ),
+        ];
+        
+        // Mobile columns - stack layout
+        $mobileColumns = [
+            // Custom column that shows all info in a stack
+            TextColumn::make('mobile_view')
+                ->label('Booking Details')
+                ->html()
+                ->visibleFrom('sm')
+                ->hiddenFrom('md')
+                ->extraAttributes(['class' => 'w-full'])
+                ->getStateUsing(function ($record) {
+                    $carName = $record->car?->name ?? 'N/A';
+                    $renterName = $record->renter_name ?? 'N/A';
+                    
+                    $start = $record->start_datetime
+                        ? Carbon::parse($record->start_datetime)->format('M d, Y h:i A')
+                        : 'N/A';
+                    $end = $record->end_datetime
+                        ? Carbon::parse($record->end_datetime)->format('M d, Y h:i A')
+                        : 'N/A';
+                    
+                    $totalDue = number_format($record->total_due ?? 0, 2);
+                    $paidAmount = number_format($record->paid_amount ?? 0, 2);
+                    $balance = number_format($record->balance ?? 0, 2);
+                    
+                    $balanceColor = $record->balance > 0 ? '#ef4444' : '#000000';
+                    
+                    $hours = (!$record->start_datetime || !$record->end_datetime) 
+                        ? 'N/A'
+                        : (Carbon::parse($record->start_datetime)->diffInHours(Carbon::parse($record->end_datetime)) > 24
+                            ? round(Carbon::parse($record->start_datetime)->diffInDays(Carbon::parse($record->end_datetime))) . ' days'
+                            : Carbon::parse($record->start_datetime)->diffInHours(Carbon::parse($record->end_datetime)) . ' hours');
+                    
+                    $imageUrl = $record->car?->image 
+                        ? Storage::url($record->car->image) 
+                        : asset('images/placeholder-car.png');
+                    
+                    // Calculate the balance display before the HTML
+                    $balanceDisplay = $balance > 0 ? '₱' . $balance : 'Paid';
+
+                    return "
+                        <div class='filament-mobile-stack p-3 pb-2 border-b border-gray-100 dark:border-gray-700'>
+                            <div class='flex gap-3 mb-3'>
+                                <img src='{$imageUrl}' class='w-20 h-20 object-contain rounded-lg bg-gray-50 dark:bg-gray-900' alt='Car'>
+                                <div class='flex-1'>
+                                    <div class='text-base font-semibold text-gray-900 dark:text-white'>{$carName}</div>
+                                    <div class='text-sm text-gray-500 dark:text-gray-400 mt-0.5'>{$renterName}</div>
+                                    <div class='mt-2'>
+                                        <span class='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>{$hours}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class='mb-3 text-sm space-y-2'>
+                                <div>
+                                    <span class='text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide'>Pickup: </span>
+                                    <span class='text-gray-900 dark:text-white font-medium'>{$start}</span>
+                                </div>
+                                <div>
+                                    <span class='text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide'>Return: </span>
+                                    <span class='text-gray-900 dark:text-white font-medium'>{$end}</span>
+                                </div>
+                            </div>
+                            
+                            <div class='grid grid-cols-3 gap-2 pt-2 text-sm'>
+                                <div class='text-center'>
+                                    <div class='text-gray-500 dark:text-gray-400 text-xs'>Total Due</div>
+                                    <div class='text-gray-900 dark:text-white font-semibold mt-1'>₱{$totalDue}</div>
+                                </div>
+                                <div class='text-center'>
+                                    <div class='text-gray-500 dark:text-gray-400 text-xs'>Paid</div>
+                                    <div class='text-emerald-600 dark:text-emerald-400 font-semibold mt-1'>₱{$paidAmount}</div>
+                                </div>
+                                <div class='text-center'>
+                                    <div class='text-gray-500 dark:text-gray-400 text-xs'>Balance</div>
+                                    <div class='font-semibold mt-1' style='color: {$balanceColor};'>{$balanceDisplay}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ";
+                }),
+        ];
+        
         return $table
             ->query(static::getTableQuery())
-            ->defaultSort('start_datetime', 'asc')
             ->paginated([10, 25, 50, 100])
-            ->headerActions($headerActions)
-            ->recordUrl(
-                fn ($record) => ViewBooking::getUrl([
-                    'record' => $record->id,
-                ])
-            )
+            ->defaultSort('start_datetime', 'asc')
+            ->recordUrl(fn ($record) => ViewBooking::getUrl(['record' => $record->id]))
             ->columns([
-                /*
-                |--------------------------------------------------------------------------
-                | Mobile
-                |--------------------------------------------------------------------------
-                */
-
-                ViewColumn::make('mobile_booking')
-                    ->label('')
-                    ->view('filament.tables.columns.booking-mobile-card')
-                    ->hiddenFrom('md')
-                    ->grow()
-                    ->extraAttributes([
-                        'class' => '!w-full !max-w-none !whitespace-normal !p-0',
-                    ]),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Desktop
-                |--------------------------------------------------------------------------
-                */
-
-                ImageColumn::make('car.image')
-                    ->label('')
-                    ->visibleFrom('md'),
-
-                TextColumn::make('car.name')
-                    ->label('Vehicle')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('semibold')
-                    ->description(function ($record) {
-                        $details = trim(
-                            ($record->car?->brand ?? '')
-                            . ' '
-                            . ($record->car?->model ?? '')
-                        );
-
-                        return collect([
-                            $details,
-                            $record->car?->plate_number,
-                        ])
-                            ->filter()
-                            ->implode(' · ');
-                    })
-                    ->formatStateUsing(
-                        fn ($state, $record) => $record->car?->trashed()
-                            ? "{$state} (Deleted)"
-                            : ($state ?: 'Vehicle unavailable')
-                    )
-                    ->color(
-                        fn ($record) => $record->car?->trashed()
-                            ? 'danger'
-                            : null
-                    )
-                    ->visibleFrom('md'),
-
-                TextColumn::make('renter_name')
-                    ->label('Renter')
-                    ->searchable()
-                    ->weight('medium')
-                    ->description(
-                        fn ($record) => $record->contact_number ?: null
-                    )
-                    ->visibleFrom('md'),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Rental Period + Duration
-                |--------------------------------------------------------------------------
-                */
-
-                TextColumn::make('booking_period')
-                    ->label('Rental Period')
-                    ->html()
-                    ->getStateUsing(function ($record) {
-                        if (
-                            ! $record->start_datetime ||
-                            ! $record->end_datetime
-                        ) {
-                            return "
-                                <div class='text-sm text-gray-400'>
-                                    Schedule unavailable
-                                </div>
-                            ";
-                        }
-
-                        $start = Carbon::parse($record->start_datetime);
-                        $end = Carbon::parse($record->end_datetime);
-
-                        $startLabel = $start->format('M d, Y · h:i A');
-                        $endLabel = $end->format('M d, Y · h:i A');
-
-                        $totalHours = (int) floor(
-                            $start->diffInMinutes($end) / 60
-                        );
-
-                        if ($totalHours < 24) {
-                            $duration = $totalHours . ' '
-                                . ($totalHours === 1 ? 'hour' : 'hours');
-                        } else {
-                            $days = intdiv($totalHours, 24);
-                            $hours = $totalHours % 24;
-
-                            $duration = $days . ' '
-                                . ($days === 1 ? 'day' : 'days');
-
-                            if ($hours > 0) {
-                                $duration .= ' · ' . $hours . ' '
-                                    . ($hours === 1 ? 'hour' : 'hours');
-                            }
-                        }
-
-                        return "
-                            <div class='min-w-[210px] space-y-1'>
-                                <div class='text-sm font-medium text-gray-800 dark:text-gray-200'>
-                                    {$startLabel}
-                                </div>
-
-                                <div class='text-xs text-gray-400'>
-                                    to {$endLabel}
-                                </div>
-
-                                <div class='pt-1'>
-                                    <span class='inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-white/5 dark:text-gray-300'>
-                                        {$duration}
-                                    </span>
-                                </div>
-                            </div>
-                        ";
-                    })
-                    ->visibleFrom('md'),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Billing
-                |--------------------------------------------------------------------------
-                */
-
-                TextColumn::make('billing_summary')
-                    ->label('Billing')
-                    ->html()
-                    ->getStateUsing(function ($record) {
-                        $total = number_format(
-                            (float) ($record->total_due ?? 0),
-                            2
-                        );
-
-                        $paid = number_format(
-                            (float) ($record->paid_amount ?? 0),
-                            2
-                        );
-
-                        $balanceValue = (float) ($record->balance ?? 0);
-
-                        $balance = number_format(
-                            $balanceValue,
-                            2
-                        );
-
-                        $balanceHtml = $balanceValue > 0
-                            ? "
-                                <span class='font-semibold text-rose-600 dark:text-rose-400'>
-                                    ₱{$balance}
-                                </span>
-                            "
-                            : "
-                                <span class='font-semibold text-emerald-600 dark:text-emerald-400'>
-                                    Paid
-                                </span>
-                            ";
-
-                        return "
-                            <div class='min-w-[150px] space-y-1.5 text-xs'>
-                                <div class='flex items-center justify-between gap-4'>
-                                    <span class='text-gray-400'>
-                                        Total
-                                    </span>
-
-                                    <span class='font-semibold text-gray-800 dark:text-gray-200'>
-                                        ₱{$total}
-                                    </span>
-                                </div>
-
-                                <div class='flex items-center justify-between gap-4'>
-                                    <span class='text-gray-400'>
-                                        Paid
-                                    </span>
-
-                                    <span class='font-semibold text-emerald-600 dark:text-emerald-400'>
-                                        ₱{$paid}
-                                    </span>
-                                </div>
-
-                                <div class='flex items-center justify-between gap-4 border-t border-gray-100 pt-1.5 dark:border-white/5'>
-                                    <span class='text-gray-400'>
-                                        Balance
-                                    </span>
-
-                                    {$balanceHtml}
-                                </div>
-                            </div>
-                        ";
-                    })
-                    ->visibleFrom('md'),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Status - AFTER Billing
-                |--------------------------------------------------------------------------
-                */
-
-                TextColumn::make('booking_state')
-                    ->label('Status')
-                    ->badge()
-                    ->getStateUsing(
-                        fn ($record) => self::bookingState($record)
-                    )
-                    ->color(fn ($state) => match ($state) {
-                        'Upcoming' => 'info',
-                        'On Trip' => 'warning',
-                        'Completed' => 'success',
-                        'Cancelled' => 'danger',
-                        default => 'gray',
-                    })
-                    ->visibleFrom('md'),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Audit Columns
-                |--------------------------------------------------------------------------
-                */
-
+                // Mobile view (visible only on mobile)
+                ...$mobileColumns,
+                // Desktop view (visible only on md screens and up)
+                ...$desktopColumns,
                 TextColumn::make('creator.name')
                     ->label('Created By')
-                    ->description(
-                        fn ($record) =>
-                            $record->creator &&
-                            ! $record->creator->is_active
-                                ? 'Inactive'
-                                : null
-                    )
+                    ->description(fn ($record) => $record->creator && ! $record->creator->is_active ? 'Inactive' : null)
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visibleFrom('md'),
-
                 TextColumn::make('updater.name')
                     ->label('Last Updated By')
-                    ->description(
-                        fn ($record) =>
-                            $record->updated_at?->format(
-                                'M d, Y h:i A'
-                            )
-                    )
+                    ->description(fn ($record) => $record->updated_at?->format('M d, Y h:i A'))
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visibleFrom('md'),
             ])
-            ->filters(self::tableFilters())
+            ->filters([
+                SelectFilter::make('partner_filter')
+                    ->label('Ownership')
+                    ->options(function () {
+                        $partners = Partners::orderBy('name')->pluck('name', 'id')->toArray();
+                        return [
+                            // '' => 'All',
+                            'company_owned' => 'Company Owned',
+                        ] + $partners;
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        $value = $data['value'] ?? null;
+
+                        return match ($value) {
+                            'company_owned' => $query->whereHas('car', fn ($q) => $q->whereNull('partner_id')),
+                            '' => $query,
+                            null => $query,
+                            default => $query->whereHas('car', fn ($q) => $q->where('partner_id', $value)),
+                        };
+                    }),
+                
+                SelectFilter::make('car.name')
+                    ->relationship('car', 'name'),
+
+                Filter::make('start_datetime')
+                    ->form([
+                        Grid::make(2)->schema([ // 2-column grid
+                            DatePicker::make('created_from')
+                                ->native(true)  
+                                ->label('From'),
+                            DatePicker::make('created_until')
+                                ->native(true)  
+                                ->label('To'),
+                        ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('start_datetime', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('start_datetime', '<=', $date),
+                            );
+                    }),
+                SelectFilter::make('booking_status')
+                    ->label('Status')
+                    ->default('upcoming')
+                    ->options([
+                        'upcoming'  => 'Upcoming',
+                        'ongoing'   => 'Ongoing',
+                        'finished'  => 'Finished',
+                        'cancelled' => 'Cancelled', 
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        $status = $data['value'] ?? null;
+                        $now = now();
+
+                        return match ($status) {
+                            'upcoming' => $query->where('start_datetime', '>', $now)->where('status','approved'),
+                            'ongoing'  => $query
+                                ->where('start_datetime', '<=', $now)
+                                ->where('end_datetime', '>=', $now)
+                                ->where('status','approved'),
+                            'finished' => $query->where('end_datetime', '<', $now)->where('status','approved'),
+                            'cancelled'=> $query->where('status', 'cancelled'), 
+                            default    => $query,
+                        };
+                    })
+            ])
             ->filtersLayout(FiltersLayout::Modal)
             ->filtersFormWidth('md')
             ->actions(
                 auth()->user()->hasActiveSubscription()
-                    ? [
-                        Tables\Actions\ActionGroup::make($rowActions)
+                    ? 
+                    [
+                        Tables\Actions\ActionGroup::make($tableActions)
                             ->icon('heroicon-o-ellipsis-horizontal-circle')
-                            ->size(ActionSize::ExtraLarge),
+                            ->size(ActionSize::ExtraLarge)
                     ]
                     : []
             )
             ->bulkActions([]);
     }
 
-    protected static function bookingState(Booking $booking): string
-    {
-        if ($booking->status === 'cancelled') {
-            return 'Cancelled';
-        }
+    // Stack display
+    // public static function table(Table $table): Table
+    // {   
+    //     $importAction = Action::make('importFromExcel')
+//            ->visible(fn () => auth()->user()?->hasPermission('bookings.import') ?? false)
+    //         ->label('Import')
+    //         ->button() 
+    //         ->color('gray') 
+    //         ->outlined()
+    //         ->modalWidth('md')
+    //         ->icon('heroicon-s-arrow-down-tray')
+    //         ->form([
+    //             Forms\Components\FileUpload::make('file')
+    //                 ->label('Excel File')
+    //                 ->helperText('Note: Use dd/mm/YYYY HH:mm format (e.g. 26/08/2023 13:00).')
+    //                 ->required()
+    //                 ->acceptedFileTypes([
+    //                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    //                     'text/csv',
+    //                 ])
+    //                 ->storeFiles(false),
+    //         ])
+    //         ->action(function (array $data): void {
+    //             $import = new BookingsImport;
+    //             Excel::import($import, $data['file']);
 
-        if (! $booking->start_datetime || ! $booking->end_datetime) {
-            return ucfirst($booking->status ?? 'Booking');
-        }
+    //             if ($import->failures()->isNotEmpty()) {
+    //                 foreach ($import->failures() as $failure) {
+    //                     $row = $failure->row()+1;
+    //                     Notification::make()
+    //                         ->title("Row {$row} Error")
+    //                         ->body(implode(', ', $failure->errors()))
+    //                         ->danger()
+    //                         ->duration(2500)
+    //                         ->send();
+    //                 }
+    //                 return;
+    //             }
+                
+    //             Notification::make()
+    //                 ->title('Import Complete')
+    //                 ->body('Bookings have been imported successfully.')
+    //                 ->success()
+    //                 ->send();
+    //         });
+            
+    //     $actions = (auth()->user()->hasActiveSubscription()) ? 
+    //         [
+    //             CreateAction::make()
+    //                 ->label('Add New'),
+    //             $importAction,
+    //             Action::make('downloadTemplate')
+    //                 ->label('Download Template')
+    //                 ->button() 
+    //                 ->color('gray') 
+    //                 ->outlined()
+    //                 ->tooltip('Download a blank template for importing bookings')
+    //                 ->icon('heroicon-s-document-arrow-down')
+    //                 ->action(fn () => Excel::download(new BookingTemplateExport, 'booking-template.xlsx')),
+    //             Action::make('exportToExcel')
+    // ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
+    //                 ->label('Export')
+    //                 ->button()
+    //                 ->color('gray')
+    //                 ->outlined()
+    //                 ->icon('heroicon-s-arrow-up-tray')
+    //                 ->action(function ($livewire): BinaryFileResponse {
+    //                     $query = $livewire->getFilteredTableQuery();
+    //                     return Excel::download(new BookingExport($query), 'bookings.xlsx');
+    //                 }),
+    //         ] : [
+    //             Action::make('exportToExcel')
+    // ->visible(fn () => auth()->user()?->hasPermission('bookings.export') ?? false)
+    //                 ->label('Export')
+    //                 ->button()
+    //                 ->color('gray')
+    //                 ->outlined()
+    //                 ->icon('heroicon-s-arrow-up-tray')
+    //                 ->action(function ($livewire): BinaryFileResponse {
+    //                     $query = $livewire->getFilteredTableQuery();
+    //                     return Excel::download(new BookingExport($query), 'bookings.xlsx');
+    //                 }),
+    //         ];
 
-        $now = now();
-        $start = Carbon::parse($booking->start_datetime);
-        $end = Carbon::parse($booking->end_datetime);
+    //     $company = filament()->getTenant();
+    //     $tableActions = (auth()->user()->hasActiveSubscription()) 
+    //         ? [
+    //             Tables\Actions\Action::make('addPayment')
+    //                     ->label('Add Payment')
+    //                     ->icon('heroicon-o-currency-dollar')
+    //                     ->color('success')
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled')
+    //                     ->form([
+    //                         Forms\Components\Select::make('fund_type_id')
+    //                             ->label('Fund')
+    //                             ->options(FundType::pluck('name', 'id'))
+    //                             ->required(),
+    //                         Forms\Components\TextInput::make('amount')
+    //                             ->label('Amount')
+    //                             ->numeric()
+    //                             ->required(),
+    //                         Forms\Components\TextInput::make('payment_notes')
+    //                             ->label('Payment Note'),
+    //                         Forms\Components\DatePicker::make('payment_date')
+    //                             ->label('Payment Date')
+    //                             ->required()
+    //                             ->default(now()),
+    //                     ])
+    //                     ->action(function ($record, array $data) {
+    //                         $record->payments()->create($data);
+    //                         $totalPaid = $record->payments()->sum('amount');
+    //                         $record->update([
+    //                             'paid_amount' => $totalPaid,
+    //                             'balance' => $record->total_due - $totalPaid,
+    //                         ]);
+    //                         Notification::make()
+    //                             ->title('Payment added successfully!')
+    //                             ->success()
+    //                             ->send();
+    //                     })
+    //                     ->modalWidth('md')
+    //                     ->modalHeading('Add Booking Payment')
+    //                     ->modalButton('Save Payment'),
+    //             Tables\Actions\Action::make('cancelBooking')
+    //                     ->label('Cancel Booking')
+    //                     ->icon('heroicon-o-x-circle')
+    //                     ->color('danger')
+    //                     ->requiresConfirmation()
+    //                     ->modalHeading('Cancel Booking')
+    //                     ->visible(fn ($record) => 
+    //                         $record->status !== 'cancelled' &&
+    //                         $record->end_datetime > now()
+    //                     )
+    //                     ->modalSubheading('Are you sure you want to cancel this booking?')
+    //                     ->modalButton('Yes, Cancel')
+    //                     ->action(function ($record, array $data = null) {
+    //                         $record->update(['status' => 'cancelled']);
+    //                         Notification::make()
+    //                             ->title('Booking cancelled successfully!')
+    //                             ->success()
+    //                             ->send();
+    //                     }),
+    //             Tables\Actions\Action::make('viewBooking')
+    //                     ->label('View Booking')
+    //                     ->icon('heroicon-o-eye')
+    //                     ->url(fn ($record) => ViewBooking::getUrl(['record' => $record->id])),
+    //             Tables\Actions\EditAction::make()->color('gray')
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled'),
+    //             Tables\Actions\DeleteAction::make()->color('gray')
+    //                     ->visible(fn ($record) => (auth()->user()?->hasPermission('bookings.payments') ?? false) && $record->status !== 'cancelled'),
+    //         ] : [];
+        
+    //     if ($company && ($company->hasNonBasicPaidSubscription() || $company->hasActiveFreeSubscription())) {
+    //         $tableActions[] = Tables\Actions\Action::make('preInspection')
+    //             ->label(fn ($record) => $record->inspections()->where('type', 'pre')->exists() ? 'View Pre Inspection' : 'Start Pre Inspection')
+    //             ->visible(fn ($record) => !($record->end_datetime && \Carbon\Carbon::parse($record->end_datetime)->isPast()))
+    //             ->icon('heroicon-o-clipboard-document-check')
+    //             ->color('primary')
+    //             ->url(function ($record) {
+    //                 $pre = $record->inspections()->where('type', 'pre')->first();
+    //                 return $pre ? \App\Filament\Pages\ViewInspectionPage::getUrl(['record' => $pre->id]) : \App\Filament\Pages\BookingInspectionPage::getUrl(['bookingId' => $record->id, 'type' => 'pre']);
+    //             });
 
-        if ($start->gt($now)) {
-            return 'Upcoming';
-        }
+    //         $tableActions[] = Tables\Actions\Action::make('postInspection')
+    //             ->label(fn ($record) => $record->inspections()->where('type', 'post')->exists() ? 'View Post Inspection' : 'Start Post Inspection')
+    //             ->icon('heroicon-o-clipboard-document-check')
+    //             ->color('secondary')
+    //             ->url(function ($record) {
+    //                 $post = $record->inspections()->where('type', 'post')->first();
+    //                 return $post ? \App\Filament\Pages\ViewInspectionPage::getUrl(['record' => $post->id]) : \App\Filament\Pages\BookingInspectionPage::getUrl(['bookingId' => $record->id, 'type' => 'post']);
+    //             })
+    //             ->visible(fn ($record) => !($record->end_datetime && \Carbon\Carbon::parse($record->end_datetime)->isPast()) && $record->inspections()->where('type', 'pre')->exists());
+    //     }
 
-        if ($start->lte($now) && $end->gte($now)) {
-            return 'On Trip';
-        }
+    //     return $table
+    //         ->query(static::getTableQuery())
+    //         ->paginated([10, 25, 50, 100])
+    //         ->defaultSort('start_datetime', 'asc')
+    //         ->headerActions($actions)
+    //         ->recordUrl(fn ($record) => ViewBooking::getUrl(['record' => $record->id]))
+    //         ->contentGrid([
+    //             'md' => 2,
+    //             'xl' => 3,
+    //         ])
+    //         ->columns([
+    //             Tables\Columns\Layout\Stack::make([
+    //                 ImageColumn::make('car.image')
+    //                     ->height('180px')
+    //                     ->width('100%')
+    //                     ->extraImgAttributes(['class' => 'object-cover rounded-t-xl']),
 
-        if ($end->lt($now)) {
-            return 'Completed';
-        }
+    //                 Tables\Columns\Layout\Stack::make([
+    //                     Tables\Columns\Layout\Split::make([
+    //                         TextColumn::make('car.name')
+    //                             ->weight('bold')
+    //                             ->size('lg')
+    //                             ->color(fn ($record) => $record->car?->trashed() ? 'danger' : 'primary')
+    //                             ->formatStateUsing(fn ($state, $record) => $record->car?->trashed() ? "{$state} (Deleted)" : $state),
+                            
+    //                         TextColumn::make('hours')
+    //                             ->badge()
+    //                             ->color('gray')
+    //                             ->getStateUsing(function ($record) {
+    //                                 if (!$record->start_datetime || !$record->end_datetime) return 'N/A';
+    //                                 $diff = Carbon::parse($record->start_datetime)->diffInHours(Carbon::parse($record->end_datetime));
+    //                                 return ($diff > 24 ? round($diff / 24) . ' days' : $diff . ' hours');
+    //                             }),
+    //                     ]),
 
-        return ucfirst($booking->status ?? 'Booking');
-    }
+    //                     TextColumn::make('renter_name')
+    //                         ->icon('heroicon-m-user')
+    //                         ->size('sm')
+    //                         ->color('gray'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | HEADER ACTIONS
-    |--------------------------------------------------------------------------
-    */
+    //                     TextColumn::make('booking_period')
+    //                         ->icon('heroicon-m-calendar-days')
+    //                         ->size('xs')
+    //                         ->getStateUsing(fn ($record) => 
+    //                             Carbon::parse($record->start_datetime)->format('M d, H:i') . ' → ' . 
+    //                             Carbon::parse($record->end_datetime)->format('M d, H:i')
+    //                         ),
 
-    protected static function tableHeaderActions(): array
-    {
-        $export = Action::make('exportToExcel')
-            ->visible(
-                fn () => auth()->user()?->hasPermission('bookings.export') ?? false
-            )
-            ->label('Export')
-            ->color('gray')
-            ->outlined()
-            ->icon('heroicon-s-arrow-up-tray')
-            ->action(function ($livewire): BinaryFileResponse {
-                return Excel::download(
-                    new BookingExport($livewire->getFilteredTableQuery()),
-                    'bookings.xlsx'
-                );
-            });
-
-        if (! auth()->user()->hasActiveSubscription()) {
-            return [$export];
-        }
-
-        return [
-            // CreateAction::make()
-            //     ->label('Add Booking'),
-
-            // Action::make('importFromExcel')
-            //     ->visible(
-            //         fn () => auth()->user()?->hasPermission('bookings.import') ?? false
-            //     )
-            //     ->label('Import')
-            //     ->color('gray')
-            //     ->outlined()
-            //     ->icon('heroicon-s-arrow-down-tray')
-            //     ->modalWidth('md')
-            //     ->form([
-            //         Forms\Components\FileUpload::make('file')
-            //             ->label('Excel File')
-            //             ->helperText(
-            //                 'Use dd/mm/YYYY HH:mm format, e.g. 26/08/2026 13:00.'
-            //             )
-            //             ->acceptedFileTypes([
-            //                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            //                 'text/csv',
-            //             ])
-            //             ->storeFiles(false)
-            //             ->required(),
-            //     ])
-            //     ->action(function (array $data): void {
-            //         $import = new BookingsImport;
-
-            //         Excel::import($import, $data['file']);
-
-            //         if ($import->failures()->isNotEmpty()) {
-            //             foreach ($import->failures() as $failure) {
-            //                 Notification::make()
-            //                     ->title('Row ' . ($failure->row() + 1) . ' Error')
-            //                     ->body(implode(', ', $failure->errors()))
-            //                     ->danger()
-            //                     ->send();
-            //             }
-
-            //             return;
-            //         }
-
-            //         Notification::make()
-            //             ->title('Import Complete')
-            //             ->body('Bookings imported successfully.')
-            //             ->success()
-            //             ->send();
-            //     }),
-
-            // Action::make('downloadTemplate')
-            //     ->label('Template')
-            //     ->color('gray')
-            //     ->outlined()
-            //     ->icon('heroicon-s-document-arrow-down')
-            //     ->action(
-            //         fn () => Excel::download(
-            //             new BookingTemplateExport,
-            //             'booking-template.xlsx'
-            //         )
-            //     ),
-
-            // $export,
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ROW ACTIONS
-    |--------------------------------------------------------------------------
-    */
-
-    protected static function tableRowActions(): array
-    {
-        return [
-            Tables\Actions\Action::make('addPayment')
-                ->label('Add Payment')
-                ->icon('heroicon-o-banknotes')
-                ->color('success')
-                ->visible(
-                    fn ($record) =>
-                        (auth()->user()?->hasPermission('bookings.payments') ?? false)
-                        && $record->status !== 'cancelled'
-                )
-                ->form([
-                    Forms\Components\Select::make('fund_type_id')
-                        ->label('Fund')
-                        ->options(FundType::pluck('name', 'id'))
-                        ->required(),
-
-                    Forms\Components\TextInput::make('amount')
-                        ->label('Amount')
-                        ->prefix('₱')
-                        ->numeric()
-                        ->required(),
-
-                    Forms\Components\TextInput::make('payment_notes')
-                        ->label('Payment Note'),
-
-                    Forms\Components\DatePicker::make('payment_date')
-                        ->label('Payment Date')
-                        ->default(now())
-                        ->required(),
-                ])
-                ->action(function ($record, array $data) {
-                    $record->payments()->create($data);
-
-                    $totalPaid = (float) $record
-                        ->payments()
-                        ->sum('amount');
-
-                    $record->update([
-                        'paid_amount' => $totalPaid,
-                        'balance' => (float) $record->total_due - $totalPaid,
-                    ]);
-
-                    Notification::make()
-                        ->title('Payment added successfully.')
-                        ->success()
-                        ->send();
-                })
-                ->modalWidth('md')
-                ->modalHeading('Add Booking Payment')
-                ->modalButton('Save Payment'),
-
-            Tables\Actions\Action::make('viewBooking')
-                ->label('View Booking')
-                ->icon('heroicon-o-eye')
-                ->url(
-                    fn ($record) => ViewBooking::getUrl([
-                        'record' => $record->id,
-                    ])
-                ),
-
-            Tables\Actions\EditAction::make()
-                ->label('Edit Booking')
-                ->color('gray')
-                ->visible(
-                    fn ($record) =>
-                        (auth()->user()?->hasPermission('bookings.update') ?? false)
-                        && $record->status !== 'cancelled'
-                ),
-
-            Tables\Actions\Action::make('cancelBooking')
-                ->label('Cancel Booking')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalHeading('Cancel Booking')
-                ->modalSubheading(
-                    'Are you sure you want to cancel this booking?'
-                )
-                ->modalButton('Yes, Cancel')
-                ->visible(
-                    fn ($record) =>
-                        (auth()->user()?->hasPermission('bookings.cancel') ?? false)
-                        && $record->status !== 'cancelled'
-                        && $record->end_datetime
-                        && Carbon::parse($record->end_datetime)->isFuture()
-                )
-                ->action(function ($record) {
-                    $record->update([
-                        'status' => 'cancelled',
-                    ]);
-
-                    Notification::make()
-                        ->title('Booking cancelled successfully.')
-                        ->success()
-                        ->send();
-                }),
-
-            Tables\Actions\DeleteAction::make()
-                ->color('gray')
-                ->visible(
-                    fn ($record) =>
-                        (auth()->user()?->hasPermission('bookings.delete') ?? false)
-                        && $record->status !== 'cancelled'
-                ),
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILTERS
-    |--------------------------------------------------------------------------
-    */
-
-    protected static function tableFilters(): array
-    {
-        return [
-            SelectFilter::make('booking_status')
-                ->label('Status')
-                ->default('upcoming')
-                ->options([
-                    'upcoming' => 'Upcoming',
-                    'ongoing' => 'On Trip',
-                    'finished' => 'Completed',
-                    'cancelled' => 'Cancelled',
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    $value = $data['value'] ?? null;
-                    $now = now();
-
-                    return match ($value) {
-                        'upcoming' => $query
-                            ->where('status', 'approved')
-                            ->where('start_datetime', '>', $now),
-
-                        'ongoing' => $query
-                            ->where('status', 'approved')
-                            ->where('start_datetime', '<=', $now)
-                            ->where('end_datetime', '>=', $now),
-
-                        'finished' => $query
-                            ->where('status', 'approved')
-                            ->where('end_datetime', '<', $now),
-
-                        'cancelled' => $query
-                            ->where('status', 'cancelled'),
-
-                        default => $query,
-                    };
-                }),
-
-            SelectFilter::make('partner_filter')
-                ->label('Ownership')
-                ->options(function () {
-                    return [
-                        'company_owned' => 'Company Owned',
-                    ] + Partners::query()
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->toArray();
-                })
-                ->query(function (Builder $query, array $data): Builder {
-                    $value = $data['value'] ?? null;
-
-                    if (! $value) {
-                        return $query;
-                    }
-
-                    if ($value === 'company_owned') {
-                        return $query->whereHas(
-                            'car',
-                            fn ($car) => $car->whereNull('partner_id')
-                        );
-                    }
-
-                    return $query->whereHas(
-                        'car',
-                        fn ($car) => $car->where('partner_id', $value)
-                    );
-                }),
-
-            SelectFilter::make('car.name')
-                ->label('Vehicle')
-                ->relationship('car', 'name')
-                ->searchable()
-                ->preload(),
-
-            Filter::make('rental_period')
-                ->label('Rental Period')
-                ->form([
-                    Grid::make(2)->schema([
-                        DatePicker::make('from')
-                            ->label('From')
-                            ->native(true),
-
-                        DatePicker::make('until')
-                            ->label('To')
-                            ->native(true),
-                    ]),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            $data['from'] ?? null,
-                            fn (Builder $query, $date) =>
-                                $query->whereDate(
-                                    'start_datetime',
-                                    '>=',
-                                    $date
-                                )
-                        )
-                        ->when(
-                            $data['until'] ?? null,
-                            fn (Builder $query, $date) =>
-                                $query->whereDate(
-                                    'start_datetime',
-                                    '<=',
-                                    $date
-                                )
-                        );
-                }),
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | RESOURCE
-    |--------------------------------------------------------------------------
-    */
+    //                     Tables\Columns\Layout\Split::make([
+    //                         TextColumn::make('total_due')
+    //                             ->money('PHP')
+    //                             ->weight('bold')
+    //                             ->size('sm'),
+    //                         TextColumn::make('balance')
+    //                             ->money('PHP')
+    //                             ->alignRight()
+    //                             ->weight('bold')
+    //                             ->color(fn ($record) => $record->balance > 0 ? 'danger' : 'success')
+    //                             ->formatStateUsing(fn ($state) => $state > 0 ? "Bal: {$state}" : 'Paid'),
+    //                     ])->extraAttributes(['class' => 'bg-gray-50 dark:bg-white/5 p-2 rounded-lg mt-2']),
+    //                 ])->space(2)->extraAttributes(['class' => 'p-4']),
+    //             ]),
+    //         ])
+    //         ->filters([
+    //             SelectFilter::make('partner_filter')
+    //                 ->label('Ownership')
+    //                 ->options(function () {
+    //                     $partners = Partners::orderBy('name')->pluck('name', 'id')->toArray();
+    //                     return ['company_owned' => 'Company Owned'] + $partners;
+    //                 })
+    //                 ->query(function (Builder $query, array $data) {
+    //                     $value = $data['value'] ?? null;
+    //                     return match ($value) {
+    //                         'company_owned' => $query->whereHas('car', fn ($q) => $q->whereNull('partner_id')),
+    //                         '' , null => $query,
+    //                         default => $query->whereHas('car', fn ($q) => $q->where('partner_id', $value)),
+    //                     };
+    //                 }),
+    //             SelectFilter::make('car.name')->relationship('car', 'name'),
+    //             Filter::make('start_datetime')
+    //                 ->form([
+    //                     Grid::make(2)->schema([
+    //                         DatePicker::make('created_from')->native(true)->label('From'),
+    //                         DatePicker::make('created_until')->native(true)->label('To'),
+    //                     ]),
+    //                 ])
+    //                 ->query(function (Builder $query, array $data): Builder {
+    //                     return $query
+    //                         ->when($data['created_from'], fn(Builder $query, $date) => $query->whereDate('start_datetime', '>=', $date))
+    //                         ->when($data['created_until'], fn(Builder $query, $date) => $query->whereDate('start_datetime', '<=', $date));
+    //                 }),
+    //             SelectFilter::make('booking_status')
+    //                 ->label('Status')
+    //                 ->default('upcoming')
+    //                 ->options([
+    //                     'upcoming'  => 'Upcoming',
+    //                     'ongoing'   => 'Ongoing',
+    //                     'finished'  => 'Finished',
+    //                     'cancelled' => 'Cancelled', 
+    //                 ])
+    //                 ->query(function (Builder $query, array $data) {
+    //                     $status = $data['value'] ?? null;
+    //                     $now = now();
+    //                     return match ($status) {
+    //                         'upcoming' => $query->where('start_datetime', '>', $now)->where('status','approved'),
+    //                         'ongoing'  => $query->where('start_datetime', '<=', $now)->where('end_datetime', '>=', $now)->where('status','approved'),
+    //                         'finished' => $query->where('end_datetime', '<', $now)->where('status','approved'),
+    //                         'cancelled'=> $query->where('status', 'cancelled'), 
+    //                         default    => $query,
+    //                     };
+    //                 })
+    //         ])
+    //         ->filtersLayout(FiltersLayout::Modal)
+    //         ->filtersFormWidth('md')
+    //         ->actions(
+    //             auth()->user()->hasActiveSubscription()
+    //                 ? [
+    //                     Tables\Actions\ActionGroup::make($tableActions)
+    //                         ->icon('heroicon-o-ellipsis-horizontal-circle')
+    //                         ->size(ActionSize::ExtraLarge)
+    //                 ] : []
+    //         )
+    //         ->bulkActions(
+    //             (auth()->user()->hasActiveSubscription()) ? [] : []
+    //         );
+    // }
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -1903,14 +1545,15 @@ class BookingResource extends TenantResource
 
     public static function getWidgets(): array
     {
-        return [];
+        return [
+            // BookingStatsWidget::class
+        ];
     }
 
     public static function getNavigationBadge(): ?string
     {
-        $count = Reservation::query()
-            ->where('status', 'pending')
-            ->count();
+        // Example: show count of pending bookings
+        $count = Reservation::where('status', 'pending')->count();
 
         return $count > 0 ? (string) $count : null;
     }

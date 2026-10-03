@@ -463,8 +463,10 @@ class ViewReservation extends EditRecord
     {
         return parent::getQuery()
             ->with([
-                'customer',
-                'car'
+                'customer.requirements.requirementType',
+                'car',
+                'source',
+                'fundType',
             ]);
     }
 

@@ -1,404 +1,742 @@
 <x-filament::page>
+
     @php
-        $start = $this->record->start_date;
-        $end = $this->record->end_date;
-        $duration = '-';
+        $record = $this->record;
 
-        if ($start && $end) {
-            $startCarbon = \Carbon\Carbon::parse($start);
-            $endCarbon = \Carbon\Carbon::parse($end);
-            $diffInHours = $startCarbon->diffInHours($endCarbon);
+        $start = $record->start_date
+            ? \Carbon\Carbon::parse($record->start_date)
+            : null;
 
-            if ($diffInHours < 24) {
-                $duration = '1 Day';
-            } else {
-                $days = floor($diffInHours / 24);
-                $extendHours = $diffInHours % 24;
-                $duration = $days . ' Day' . ($days > 1 ? 's' : '');
-                if ($extendHours > 0) {
-                    $duration .= " + {$extendHours} Hr" . ($extendHours > 1 ? 's' : '');
-                }
+        $end = $record->end_date
+            ? \Carbon\Carbon::parse($record->end_date)
+            : null;
+
+        $hours = $start && $end
+            ? (int) floor($start->diffInMinutes($end) / 60)
+            : null;
+
+        if ($hours === null) {
+            $duration = '—';
+        } elseif ($hours < 24) {
+            $duration = $hours . ' ' . ($hours === 1 ? 'hour' : 'hours');
+        } else {
+            $days = intdiv($hours, 24);
+            $remaining = $hours % 24;
+
+            $duration = $days . ' ' . ($days === 1 ? 'day' : 'days');
+
+            if ($remaining) {
+                $duration .= ' · ' . $remaining . ' hr';
             }
         }
+
+        $image = $record->car?->image
+            ? \Illuminate\Support\Facades\Storage::url($record->car->image)
+            : \Illuminate\Support\Facades\Storage::url('images/default-car.png');
+
+        $status = match ($record->status) {
+            'approved' => [
+                'label' => 'Approved',
+                'class' => 'text-emerald-600 dark:text-emerald-400',
+                'dot' => 'bg-emerald-500',
+            ],
+
+            'declined' => [
+                'label' => 'Declined',
+                'class' => 'text-rose-600 dark:text-rose-400',
+                'dot' => 'bg-rose-500',
+            ],
+
+            'cancelled' => [
+                'label' => 'Cancelled',
+                'class' => 'text-gray-500 dark:text-gray-400',
+                'dot' => 'bg-gray-400',
+            ],
+
+            default => [
+                'label' => 'Pending',
+                'class' => 'text-amber-600 dark:text-amber-400',
+                'dot' => 'bg-amber-500',
+            ],
+        };
     @endphp
 
-    <div class="space-y-8">
-        {{-- Executive Header --}}
-        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-b border-gray-200 dark:border-gray-800 pb-8">
+
+    <div
+        x-data="{
+            receiptOpen: false,
+            receiptUrl: '',
+            documentOpen: false,
+            documentUrl: '',
+            documentIsImage: true,
+
+            openReceipt(url) {
+                this.receiptUrl = url;
+                this.receiptOpen = true;
+            },
+
+            openDocument(url, isImage = true) {
+                this.documentUrl = url;
+                this.documentIsImage = isImage;
+                this.documentOpen = true;
+            }
+        }"
+        class="space-y-5"
+    >
+
+        {{-- Reservation Header --}}
+        <div class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+
             <div>
-             
-                <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white leading-none">
-                    #{{ $this->record->reservation_number }}
-                </h1>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Created on {{ $this->record->created_at->format('F d, Y • h:i A') }}</p>
+
+                <p class="text-xs font-medium uppercase tracking-wider text-gray-400">
+                    Reservation
+                </p>
+
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+
+                    <h1 class="text-xl font-semibold text-gray-950 dark:text-white">
+                        #{{ $record->reservation_number }}
+                    </h1>
+
+                    <span class="text-sm text-gray-400">
+                        {{ $record->created_at?->format('M d, Y · h:i A') }}
+                    </span>
+
+                </div>
+
             </div>
-            
-            <div class="flex items-center gap-3">
-                <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold  shadow-sm border
-                    @if($this->record->status === 'approved') bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20
-                    @elseif($this->record->status === 'pending') bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20
-                    @elseif($this->record->status === 'declined') bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20
-                    @endif
-                ">
-                    {{ strtoupper($this->record->status) }}
-                </span>
+
+
+            <div class="flex items-center gap-2 text-sm font-medium {{ $status['class'] }}">
+                <span class="h-2 w-2 rounded-full {{ $status['dot'] }}"></span>
+
+                {{ $status['label'] }}
             </div>
+
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {{-- Primary Details Column --}}
-            <div class="lg:col-span-2 space-y-8">
-                
-                {{-- Customer Profile --}}
-                <section class="bg-white dark:bg-gray-900 rounded-xl  overflow-hidden shadow-md">
-                    <div class="px-6 py-4 bg-gray-50/50 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent">
-                        <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <x-heroicon-s-user class="w-4 h-4 text-gray-400" />
-                            Customer Profile
-                        </h2>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-6">
-                            <div class="space-y-1">
-                                <span class="text-sm font-bold text-gray-400 ">Renter Name</span>
-                                <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $this->record->customer->customer_name }}</p>
-                            </div>
-                            <div class="space-y-1">
-                                <span class="text-sm font-bold text-gray-400 ">Contact Number</span>
-                                <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $this->record->customer->contact_number }}</p>
-                            </div>
-                            <div class="space-y-1">
-                                <span class="text-sm font-bold text-gray-400 ">Email</span>
-                                <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $this->record->customer->email }}</p>
-                            </div>
-                            <div class="md:col-span-3 space-y-1 border-t border-gray-200 dark:border-white/10 pt-4">
-                                <span class="text-sm font-bold text-gray-400 ">Billing Address</span>
-                                <p class="text-sm text-gray-600 dark:text-gray-300">{{ $this->record->customer->address }}</p>
-                            </div>
-                            <div class="md:col-span-3 space-y-1 border-t border-gray-200 dark:border-white/10 pt-2">
-                                <span class="text-sm font-bold text-gray-400 ">Facebook Profile</span><br/>
-                                <a href="{{ $this->record->customer->facebook_name }}" target="_blank" class="text-sm text-gray-600 dark:text-gray-300">{{ $this->record->customer->facebook_name }}</a>
-                            </div>
-                        </div>
-                    </div>
-                </section>
 
-                {{-- Vehicle Assignment --}}
-                <section class="bg-white dark:bg-gray-900 rounded-xl  overflow-hidden shadow-md">
-                    <div class="px-6 py-4 bg-gray-50/50 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent">
-                        <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <x-heroicon-s-truck class="w-5 h-5 text-gray-400" />
-                            Vehicle Details
-                        </h2>
-                    </div>
-                    <div class="p-6 flex flex-col md:flex-row gap-8 items-start">
-                        <div class="w-full md:w-48 flex-shrink-0">
-                            @if($this->record->car && $this->record->car->image)
-                                    <img src="{{ Storage::url($this->record->car->image) }}" class="w-full h-auto object-contain rounded shadow-sm">
-                            @endif
+        {{-- Main Record --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12">
+
+                {{-- Vehicle --}}
+                <div class="border-b border-gray-200 p-5 dark:border-white/10 lg:col-span-4 lg:border-b-0 lg:border-r">
+
+                    <p class="text-xs font-medium uppercase tracking-wider text-gray-400">
+                        Reserved Vehicle
+                    </p>
+
+
+                    <div class="mt-4 flex items-center gap-4 lg:block">
+
+                        <div class="flex h-28 shrink-0 items-center justify-center rounded-lg bg-gray-50 dark:bg-white/[0.025] lg:h-40">
+
+                            <img
+                                src="{{ $image }}"
+                                alt="{{ $record->car?->name ?? 'Vehicle' }}"
+                                class="max-h-full object-contain p-3"
+                            />
+
                         </div>
-                        <div class="flex-1 grid grid-cols-2 gap-6">
+
+
+                        <div class="min-w-0 lg:mt-4">
+
+                            <p class="truncate text-base font-semibold text-gray-900 dark:text-white">
+                                {{ $record->car?->name ?? 'Vehicle unavailable' }}
+                            </p>
+
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                {{ trim(
+                                    ($record->car?->brand ?? '')
+                                    . ' '
+                                    . ($record->car?->model ?? '')
+                                ) ?: '—' }}
+                            </p>
+
+
+                            <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+
+                                @if($record->car?->plate_number)
+                                    <span>
+                                        {{ $record->car->plate_number }}
+                                    </span>
+                                @endif
+
+                                @if($record->car?->year)
+                                    <span>
+                                        {{ $record->car->year }}
+                                    </span>
+                                @endif
+
+                                @if($record->car?->color)
+                                    <span>
+                                        {{ $record->car->color }}
+                                    </span>
+                                @endif
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- Details --}}
+                <div class="lg:col-span-8">
+
+                    {{-- Schedule --}}
+                    <div class="border-b border-gray-200 p-5 dark:border-white/10">
+
+                        <div class="flex items-center justify-between gap-4">
+
+                            <p class="text-xs font-medium uppercase tracking-wider text-gray-400">
+                                Reservation Schedule
+                            </p>
+
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-300">
+                                {{ $duration }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+
                             <div>
-                                <span class="text-sm font-bold text-gray-400 ">Car Model</span>
-                                <p class="text-base font-bold text-gray-900 dark:text-white">{{ $this->record->car->name }}</p>
-                                <p class="text-sm text-gray-500">{{ $this->record->car->brand }} • {{ $this->record->car->year }}</p>
+
+                                <p class="text-xs text-gray-400">
+                                    Pickup
+                                </p>
+
+                                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                                    {{ $start?->format('M d, Y · h:i A') ?? '—' }}
+                                </p>
+
+                                <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                                    {{ $record->pickup_address ?: 'Office Garage' }}
+                                </p>
+
                             </div>
+
+
                             <div>
-                                <span class="text-sm font-bold text-gray-400 ">Identification</span>
-                                <p class="text-base font-mono font-bold text-primary-600 ">{{ $this->record->car->plate_number ?? 'No Plate' }}</p>
-                                <p class="text-sm text-gray-500">{{ $this->record->car->color }}</p>
+
+                                <p class="text-xs text-gray-400">
+                                    Return
+                                </p>
+
+                                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                                    {{ $end?->format('M d, Y · h:i A') ?? '—' }}
+                                </p>
+
+                                <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                                    {{ $record->return_address ?: 'Office Garage' }}
+                                </p>
+
                             </div>
+
                         </div>
-                    </div>
-                </section>
 
-                {{-- Reservation Fee Section - Grid Row below Vehicle Details --}}
-                @if($this->record->reservation_fee > 0 || $this->record->fund_type_id)
-                    <section class="bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-md border border-gray-200 dark:border-gray-700">
-                        <div class="px-6 py-4 bg-gray-50/50 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent">
-                            <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <x-heroicon-s-credit-card class="w-5 h-5 text-[var(--tw-primary)]" />
-                                Reservation Fee
-                            </h2>
-                        </div>
-                        <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {{-- Account/Fund Type --}}
-                                <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Method</span>
-                                    <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">
-                                        {{ $this->record->fundType->name ?? 'N/A' }}
-                                    </p>
-                                    @if($this->record->fundType)
-                                        <div class="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                                            @if($this->record->fundType->account_name)
-                                                <p><span class="font-medium">Account:</span> {{ $this->record->fundType->account_name }}</p>
-                                            @endif
-                                            @if($this->record->fundType->account_number)
-                                                <p><span class="font-medium">Number:</span> <span class="font-mono">{{ $this->record->fundType->account_number }}</span></p>
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
 
-                                {{-- Amount --}}
-                                <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Amount Paid</span>
-                                    <p class="mt-1 text-2xl font-black text-[var(--tw-primary)]">
-                                        ₱{{ number_format($this->record->reservation_fee, 2) }}
-                                    </p>
-                                </div>
+                        <div class="mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-gray-100 pt-4 dark:border-white/5">
 
-                                {{-- View Receipt --}}
-                                <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col justify-center">
-                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Receipt</span>
-                                    @if($this->record->reservation_fee_receipt)
-                                        <div class="mt-2">
-                                            <button 
-                                                x-data="{}"
-                                                @click="$dispatch('open-receipt-modal', { 
-                                                    url: '{{ Storage::disk('s3')->temporaryUrl($this->record->reservation_fee_receipt, now()->addMinutes(15)) }}' 
-                                                })"
-                                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--tw-primary)]/10 text-[var(--tw-primary)] rounded-lg hover:bg-[var(--tw-primary)]/20 transition-colors text-sm font-medium">
-                                                <x-heroicon-s-eye class="w-4 h-4" />
-                                                View Receipt
-                                            </button>
-                                        </div>
-                                    @else
-                                        <p class="mt-2 text-sm text-gray-400">No receipt uploaded</p>
-                                    @endif
-                                </div>
+                            <div>
+                                <span class="text-xs text-gray-400">
+                                    Destination
+                                </span>
+
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    {{ $record->destination ?: '—' }}
+                                </span>
                             </div>
-                        </div>
-                    </section>
-                @endif
-            </div>
 
-            {{-- Sidebar Details --}}
-            <div class="space-y-8">
-                {{-- Logistics Card --}}
-                <section class="bg-white dark:bg-gray-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-4 opacity-10">
-                        <x-heroicon-o-calendar class="w-20 h-20 text-gray-500 dark:text-white" />
-                    </div>
-                    
-                    <h3 class="text-sm font-bold text-primary-400  mb-6">Itinerary Summary</h3>
-                    
-                    <div class="space-y-6">
-                        <div class="relative pl-6 border-l border-white/20">
-                            <div class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-primary-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                            <p class="text-sm font-bold text-gray-400  mb-1">Pickup</p>
-                            <p class="text-sm text-gray-400 mt-1 flex items-center gap-1">
-                                <x-heroicon-m-calendar class="w-5 h-5" />
-                                {{ $this->record->start_date?->format('M d, Y • h:i A') }}
-                            </p>
-                            <p class="text-sm text-gray-400 mt-1 flex items-center gap-1">
-                                <x-heroicon-m-map-pin class="w-5 h-5" />
-                                {{ $this->record->pickup_address ?? 'Office Garage' }}
-                            </p>
+
+                            <div>
+                                <span class="text-xs text-gray-400">
+                                    Driving
+                                </span>
+
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    {{ $record->with_driver ? 'With Driver' : 'Self Drive' }}
+                                </span>
+                            </div>
+
+
+                            <div>
+                                <span class="text-xs text-gray-400">
+                                    Source
+                                </span>
+
+                                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    {{ $record->source?->source ?? 'Standard' }}
+                                </span>
+                            </div>
+
                         </div>
 
-                        <div class="relative pl-6 border-l border-white/20">
-                            <div class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
-                            <p class="text-sm font-bold text-gray-400  mb-1">Return</p>
-                            <p class="text-sm text-gray-400 mt-1 flex items-center gap-1">
-                                <x-heroicon-m-calendar class="w-5 h-5" />
-                                {{ $this->record->end_date?->format('M d, Y • h:i A') }}
-                            </p>
-                            <p class="text-sm text-gray-400 mt-1 flex items-center gap-1">
-                                <x-heroicon-m-map-pin class="w-5 h-5" />
-                                {{ $this->record->return_address ?? 'Office Garage' }}
-                            </p>
+                    </div>
+
+
+                    {{-- Customer --}}
+                    <div class="p-5">
+
+                        <p class="text-xs font-medium uppercase tracking-wider text-gray-400">
+                            Customer
+                        </p>
+
+
+                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+                            <div>
+                                <p class="text-xs text-gray-400">
+                                    Name
+                                </p>
+
+                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $record->customer?->customer_name ?: '—' }}
+                                </p>
+                            </div>
+
+
+                            <div>
+                                <p class="text-xs text-gray-400">
+                                    Contact
+                                </p>
+
+                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $record->customer?->contact_number ?: '—' }}
+                                </p>
+                            </div>
+
+
+                            <div>
+                                <p class="text-xs text-gray-400">
+                                    Email
+                                </p>
+
+                                <p class="mt-1 break-all text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $record->customer?->email ?: '—' }}
+                                </p>
+                            </div>
+
                         </div>
+
+
+                        @if($record->customer?->address)
+
+                            <div class="mt-4 border-t border-gray-100 pt-4 dark:border-white/5">
+
+                                <p class="text-xs text-gray-400">
+                                    Address
+                                </p>
+
+                                <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                    {{ $record->customer->address }}
+                                </p>
+
+                            </div>
+
+                        @endif
+
                     </div>
 
-                    <div class="mt-8 pt-6 border-t border-gray-200 dark:border-white/10 flex justify-between items-center">
-                        <span class="text-sm font-bold text-gray-400 ">Destination</span>
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $this->record->destination ?? '-' }}</span>
-                    </div>
-                    <div class=" flex justify-between items-center">
-                        <span class="text-sm font-bold text-gray-400 ">Duration</span>
-                        <span class="text-lg font-black text-gray-500 dark:text-white">{{ $duration }}</span>
-                    </div>
-                </section>
+                </div>
 
-                {{-- Quick Specs --}}
-                <section class="bg-white dark:bg-gray-900 rounded-xl  p-5 space-y-4 shadow-md">
-                  
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-gray-400 ">Chauffeur</span>
-                        <span class="text-sm font-bold px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                            {{ $this->record->with_driver ? 'Included' : 'Self-Drive' }}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-gray-400 ">Booking Source</span>
-                        <span class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $this->record->source?->source ?? 'Standard' }}</span>
-                    </div>
-                    <div class="pt-2 border-t border-gray-50 dark:border-gray-800">
-                        <span class="text-sm font-bold text-gray-400 ">Additional Drivers</span>
-                        <p class="text-sm mt-1 text-gray-600 dark:text-gray-400 font-medium">{{ $this->record->other_drivers ?? 'None' }}</p>
-                    </div>
-                </section>
             </div>
-        </div>
 
-        {{-- Verification Section --}}
-        <div class="bg-white dark:bg-gray-900 rounded-xl  overflow-hidden shadow-md">
-            <div class="px-6 py-4 bg-gray-50/50 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent flex justify-between items-center">
-                <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <x-heroicon-s-shield-check class="w-4 h-4 text-emerald-500" />
-                    Verification Documents
-                </h2>
-                <span class="text-sm font-bold text-gray-400 ">Required for release</span>
-            </div>
-            
-            <div class="p-6">
-                @if($this->record->customer->requirements?->isEmpty())
-                    <div class="flex flex-col items-center justify-center py-10 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
-                        <p class="text-sm text-gray-400 italic font-medium">No documentation has been uploaded yet.</p>
+        </section>
+
+
+        {{-- Reservation Fee --}}
+        @if(
+            ($record->reservation_fee ?? 0) > 0 ||
+            $record->fund_type_id
+        )
+
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
+
+                <div class="border-b border-gray-100 px-5 py-3.5 dark:border-white/5">
+
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Reservation Fee
+                    </p>
+
+                </div>
+
+
+                <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-white/5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+
+                    <div class="px-5 py-4">
+
+                        <p class="text-xs text-gray-400">
+                            Payment Method
+                        </p>
+
+                        <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white">
+                            {{ $record->fundType?->name ?? '—' }}
+                        </p>
+
+
+                        @if($record->fundType?->account_name)
+
+                            <p class="mt-2 text-xs text-gray-400">
+                                {{ $record->fundType->account_name }}
+                            </p>
+
+                        @endif
+
+
+                        @if($record->fundType?->account_number)
+
+                            <p class="mt-0.5 font-mono text-xs text-gray-500 dark:text-gray-400">
+                                {{ $record->fundType->account_number }}
+                            </p>
+
+                        @endif
+
                     </div>
-                @else
-                    <div x-data="{ showModal: false, imageUrl: '' }" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                        @foreach($this->record->customer->requirements as $requirement)
+
+
+                    <div class="px-5 py-4">
+
+                        <p class="text-xs text-gray-400">
+                            Amount Paid
+                        </p>
+
+                        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                            ₱{{ number_format($record->reservation_fee ?? 0, 2) }}
+                        </p>
+
+                    </div>
+
+
+                    <div class="px-5 py-4">
+
+                        <p class="text-xs text-gray-400">
+                            Payment Receipt
+                        </p>
+
+
+                        @if($record->reservation_fee_receipt)
+
                             @php
-                                $url = Storage::disk('s3')->temporaryUrl($requirement->path, now()->addMinutes(15));
-                                $extension = pathinfo($requirement->path, PATHINFO_EXTENSION);
-                                $isImage = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp']);
+                                $receiptUrl = \Illuminate\Support\Facades\Storage::disk('s3')
+                                    ->temporaryUrl(
+                                        $record->reservation_fee_receipt,
+                                        now()->addMinutes(15)
+                                    );
                             @endphp
 
-                            <div class="group relative aspect-square bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:ring-2 hover:ring-primary-500/50 cursor-pointer"
-                                 @click="imageUrl='{{ $url }}'; showModal = true">
+                            <button
+                                type="button"
+                                @click="openReceipt(@js($receiptUrl))"
+                                class="mt-2 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                            >
+                                View receipt
+                            </button>
+
+                        @else
+
+                            <p class="mt-1 text-sm text-gray-400">
+                                No receipt uploaded
+                            </p>
+
+                        @endif
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        @endif
+
+
+        {{-- Decision Info --}}
+        @if($record->datetime_declined || $record->datetime_cancelled)
+
+            <section class="border-l-2 border-rose-500 py-1 pl-4">
+
+                <p class="text-sm font-semibold text-rose-600 dark:text-rose-400">
+                    {{ $record->datetime_declined ? 'Reservation Declined' : 'Reservation Cancelled' }}
+                </p>
+
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    {{ $record->datetime_declined
+                        ? ($record->decline_reason ?: 'No reason provided')
+                        : ($record->cancellation_reason ?: 'No reason provided') }}
+                </p>
+
+            </section>
+
+        @endif
+
+
+        {{-- Customer Requirements --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
+
+            <div class="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-white/5">
+
+                <div>
+
+                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Verification Documents
+                    </h2>
+
+                    <p class="mt-0.5 text-xs text-gray-400">
+                        Customer documents submitted for this reservation.
+                    </p>
+
+                </div>
+
+
+                <span class="text-xs text-gray-400">
+                    {{ $record->customer?->requirements?->count() ?? 0 }}
+                    document(s)
+                </span>
+
+            </div>
+
+
+            @if(
+                ! $record->customer ||
+                $record->customer->requirements?->isEmpty()
+            )
+
+                <div class="px-5 py-12 text-center">
+
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        No documents uploaded
+                    </p>
+
+                    <p class="mt-1 text-xs text-gray-400">
+                        Customer verification documents will appear here.
+                    </p>
+
+                </div>
+
+            @else
+
+                <div class="divide-y divide-gray-100 dark:divide-white/5">
+
+                    @foreach($record->customer->requirements as $requirement)
+
+                        @php
+                            $documentUrl = \Illuminate\Support\Facades\Storage::disk('s3')
+                                ->temporaryUrl(
+                                    $requirement->path,
+                                    now()->addMinutes(15)
+                                );
+
+                            $extension = strtolower(
+                                pathinfo(
+                                    $requirement->path,
+                                    PATHINFO_EXTENSION
+                                )
+                            );
+
+                            $isImage = in_array(
+                                $extension,
+                                ['jpg', 'jpeg', 'png', 'webp']
+                            );
+                        @endphp
+
+
+                        <div class="flex items-center gap-4 px-5 py-4">
+
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 dark:bg-white/[0.025]">
+
                                 @if($isImage)
-                                    <img src="{{ $url }}" class="w-full h-full object-cover transition duration-300 group-hover:scale-110">
+
+                                    <img
+                                        src="{{ $documentUrl }}"
+                                        class="h-full w-full object-cover"
+                                        alt=""
+                                    />
+
                                 @else
-                                    <div class="w-full h-full flex flex-col items-center justify-center">
-                                        <x-heroicon-o-document class="w-6 h-6 text-gray-300" />
-                                        <span class="text-sm font-bold text-gray-400 mt-1 ">{{ $extension }}</span>
-                                    </div>
+
+                                    <x-filament::icon
+                                        icon="heroicon-o-document"
+                                        class="h-5 w-5 text-gray-400"
+                                    />
+
                                 @endif
-                                <div class="absolute inset-x-0 bottom-0 bg-white/90 dark:bg-gray-900/90 p-2 backdrop-blur-sm">
-                                    <p class="text-[9px] font-bold text-gray-700 dark:text-gray-300 truncate ">
-                                        {{ $requirement->requirementType->label }}
-                                    </p>
-                                </div>
+
                             </div>
-                        @endforeach
 
-                        {{-- Professional Modal --}}
-                        <div x-show="showModal" 
-                             class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/95 backdrop-blur-md p-6"
-                             x-transition.opacity @click="showModal = false" x-cloak x-on:keydown.escape.window="showModal = false">
-                            <img :src="imageUrl" class="max-w-full max-h-full rounded shadow-2xl ring-1 ring-white/10" @click.stop>
+
+                            <div class="min-w-0 flex-1">
+
+                                <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ $requirement->requirementType?->label ?? 'Document' }}
+                                </p>
+
+                                <p class="mt-0.5 text-xs uppercase text-gray-400">
+                                    {{ $extension ?: 'file' }}
+                                </p>
+
+                            </div>
+
+
+                            <button
+                                type="button"
+                                @click="openDocument(
+                                    @js($documentUrl),
+                                    @js($isImage)
+                                )"
+                                class="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                            >
+                                View
+                            </button>
+
                         </div>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
 
-    {{-- Receipt Modal --}}
-    <div x-data="{ 
-        showReceipt: false, 
-        receiptUrl: '',
-        downloadReceipt() {
-            if (!this.receiptUrl) return;
-            
-            // Fetch the image and download it
-            fetch(this.receiptUrl)
-                .then(response => response.blob())
-                .then(blob => {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'receipt-{{ $this->record->reservation_number }}.jpg';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(link.href);
-                })
-                .catch(() => {
-                    // Fallback: open in new tab if fetch fails
-                    window.open(this.receiptUrl, '_blank');
-                });
-        }
-    }"
-    x-on:open-receipt-modal.window="
-        receiptUrl = $event.detail.url;
-        showReceipt = true;
-    "
-    x-on:keydown.escape.window="showReceipt = false">
-    
-    <div x-show="showReceipt" 
-         class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
-         x-transition.opacity
-         x-cloak>
-        
-        {{-- Close button --}}
-        <button @click="showReceipt = false" 
-                class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
-        
-        {{-- Modal content --}}
-        <div class="relative max-w-4xl max-h-[90vh] w-full" @click.away="showReceipt = false">
-            <div class="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl">
-                {{-- Header --}}
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center gap-3">
-                        <x-heroicon-s-document-text class="w-5 h-5 text-[var(--tw-primary)]" />
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Payment Receipt</h3>
-                    </div>
-                    <button @click="showReceipt = false" 
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    @endforeach
+
+                </div>
+
+            @endif
+
+        </section>
+
+
+        {{-- Receipt Modal --}}
+        <div
+            x-show="receiptOpen"
+            x-cloak
+            x-transition.opacity
+            @keydown.escape.window="receiptOpen = false"
+            class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+        >
+
+            <div
+                @click.outside="receiptOpen = false"
+                class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white dark:bg-gray-900"
+            >
+
+                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-white/10">
+
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Payment Receipt
+                    </h3>
+
+                    <button
+                        type="button"
+                        @click="receiptOpen = false"
+                        class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                        <x-filament::icon
+                            icon="heroicon-o-x-mark"
+                            class="h-5 w-5"
+                        />
                     </button>
-                </div>
-                
-                {{-- Image/Content --}}
-                <div class="p-6 flex items-center justify-center min-h-[300px] bg-gray-50 dark:bg-gray-800">
-                    <template x-if="receiptUrl">
-                        <img :src="receiptUrl" 
-                             alt="Payment Receipt" 
-                             class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg">
-                    </template>
-                    <template x-if="!receiptUrl">
-                        <div class="flex flex-col items-center justify-center text-gray-400">
-                            <svg class="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span class="text-sm">No receipt available</span>
-                        </div>
-                    </template>
-                </div>
-                
-                {{-- Footer with actions --}}
-                <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                        Receipt uploaded on {{ $this->record->updated_at->format('F d, Y • h:i A') }}
-                    </span>
-                    <div class="flex gap-3">
-                        <button @click="showReceipt = false" 
-                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                            Close
-                        </button>
-                        <button @click="downloadReceipt" 
-                                class="px-4 py-2 text-sm font-medium text-white bg-[var(--tw-primary)] hover:opacity-90 rounded-lg transition-colors flex items-center gap-2">
-                            <x-heroicon-s-arrow-down-tray class="w-4 h-4" />
-                            Download
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+                </div>
+
+
+                <div class="min-h-0 flex-1 overflow-auto bg-gray-50 p-4 dark:bg-black/20">
+
+                    <img
+                        x-show="receiptUrl"
+                        :src="receiptUrl"
+                        class="mx-auto max-h-[70vh] max-w-full object-contain"
+                        alt="Payment Receipt"
+                    />
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        {{-- Document Modal --}}
+        <div
+            x-show="documentOpen"
+            x-cloak
+            x-transition.opacity
+            @keydown.escape.window="documentOpen = false"
+            class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+        >
+
+            <div
+                @click.outside="documentOpen = false"
+                class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white dark:bg-gray-900"
+            >
+
+                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-white/10">
+
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                        Verification Document
+                    </h3>
+
+                    <button
+                        type="button"
+                        @click="documentOpen = false"
+                        class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                        <x-filament::icon
+                            icon="heroicon-o-x-mark"
+                            class="h-5 w-5"
+                        />
+                    </button>
+
+                </div>
+
+
+                <div class="min-h-0 flex-1 overflow-auto bg-gray-50 p-4 dark:bg-black/20">
+
+                    <template x-if="documentIsImage">
+                        <img
+                            :src="documentUrl"
+                            class="mx-auto max-h-[72vh] max-w-full object-contain"
+                            alt=""
+                        />
+                    </template>
+
+
+                    <template x-if="! documentIsImage">
+
+                        <div class="py-16 text-center">
+
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Preview is not available for this file type.
+                            </p>
+
+                            <a
+                                :href="documentUrl"
+                                target="_blank"
+                                class="mt-3 inline-block text-sm font-medium text-primary-600 dark:text-primary-400"
+                            >
+                                Open document
+                            </a>
+
+                        </div>
+
+                    </template>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    @once
+        <style>
+            [x-cloak] {
+                display: none !important;
+            }
+        </style>
+    @endonce
+
 </x-filament::page>
