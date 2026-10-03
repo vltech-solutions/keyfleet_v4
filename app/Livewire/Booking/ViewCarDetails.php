@@ -22,7 +22,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Intervention\Image\Facades\Image;
-use App\Support\PublicFileUrl;
+// use App\Support\PublicFileUrl;
 
 class ViewCarDetails extends Component implements HasForms
 {
@@ -246,22 +246,35 @@ class ViewCarDetails extends Component implements HasForms
     {
         $value = $this->requirements[$id] ?? null;
 
-        if (!$value) return null;
+        if (! $value) {
+            return null;
+        }
 
-        // If it's a temporary uploaded file
-        if ($value instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+        if (
+            $value instanceof
+            \Livewire\Features\SupportFileUploads\TemporaryUploadedFile
+        ) {
             try {
                 return $value->temporaryUrl();
-            } catch (\Exception $e) {
-                // If Livewire's method fails, use our helper
-                return PublicFileUrl::url($value->getFilename());
+            } catch (\Throwable $e) {
+                return null;
             }
         }
 
-        // If it's a stored path (string)
         if (is_string($value)) {
-            // Use the helper for temporary URLs
-            return PublicFileUrl::temporaryUrl($value);
+            try {
+                return Storage::disk('s3')->temporaryUrl(
+                    $value,
+                    now()->addMinutes(10)
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('Unable to generate requirement temporary URL', [
+                    'path' => $value,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return null;
+            }
         }
 
         return null;

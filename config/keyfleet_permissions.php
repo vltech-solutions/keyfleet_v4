@@ -7,10 +7,10 @@ $groups = [
         'bookings.cancel', 'bookings.import', 'bookings.export', 'bookings.print',
         'bookings.payments',
     ],
-    'Quotations' => [
-        'quotations.view', 'quotations.create', 'quotations.update', 'quotations.delete',
-        'quotations.import', 'quotations.export', 'quotations.convert', 'quotations.print',
-    ],
+    // 'Quotations' => [
+    //     'quotations.view', 'quotations.create', 'quotations.update', 'quotations.delete',
+    //     'quotations.import', 'quotations.export', 'quotations.convert', 'quotations.print',
+    // ],
     'Reservations' => [
         'reservations.view', 'reservations.update', 'reservations.approve', 'reservations.cancel',
     ],
