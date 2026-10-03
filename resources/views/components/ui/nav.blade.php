@@ -27,6 +27,12 @@
                 <a href="/#features" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Features</a>
                 <a href="/testimonials" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Testimonials</a>
                 <a href="/pricing" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Pricing</a>
+                <a
+                    href="{{ route('become-agent') }}"
+                    class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                    Become an Agent
+                </a>
                 <a href="/app/login" class="px-4 py-2 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400">Log In</a>
             </nav>
 
@@ -93,6 +99,13 @@
             <a href="/#features" class="px-4 py-2.5 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400" @click="open = false">Features</a>
             <a href="/testimonials" class="px-4 py-2.5 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400" @click="open = false">Testimonials</a>
             <a href="/pricing" class="px-4 py-2.5 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400" @click="open = false">Pricing</a>
+            <a
+                href="{{ route('become-agent') }}"
+                class="px-4 py-2.5 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400"
+                @click="open = false"
+            >
+                Become an Agent
+            </a>
             <a href="/app/login" class="px-4 py-2.5 transition-all rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400" @click="open = false">Log In</a>
             <div class="pt-2 mt-2 border-t border-gray-100 dark:border-gray-800">
                 <a href="{{ route('tenant.register') }}"

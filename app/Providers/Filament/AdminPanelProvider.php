@@ -2,11 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -19,8 +19,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 // use Brickx\MaintenanceSwitch\MaintenanceSwitchPlugin;
 use Stephenjude\FilamentBlog\BlogPlugin;
-use App\Filament\Widgets\AMetrics;
-use App\Filament\Widgets\SubscriptionRevenueChart;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -37,8 +35,9 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
             ])
+            ->viteTheme(['resources/css/app.css', 'resources/js/app.js'])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([
                 // Widgets\AccountWidget::class,
@@ -60,7 +59,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 // MaintenanceSwitchPlugin::make(),
-                BlogPlugin::make()
+                BlogPlugin::make(),
             ]);
     }
 }

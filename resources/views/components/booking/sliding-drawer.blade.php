@@ -308,43 +308,192 @@
                                 @endif
                             </div>
 
-                            <!-- Privacy Policy moved here -->
-                            <div x-data="{ showPolicy: false }" class="mt-4 ml-3">
-                                <label class="flex items-start space-x-2">
+                            <div
+                                x-data="{ showPolicy: false }"
+                                class="mt-6"
+                            >
+                                {{-- Privacy Notice Summary --}}
+                                <div
+                                    class="p-4 mb-4 border border-blue-200 rounded-xl bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/30"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <div
+                                            class="flex items-center justify-center flex-shrink-0 w-10 h-10 text-blue-600 bg-blue-100 rounded-xl dark:bg-blue-900/50 dark:text-blue-300"
+                                        >
+                                            <svg
+                                                class="w-5 h-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M12 11c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2zm0 0c0 1.105.895 2 2 2s2-.895 2-2m-2 0V9m0 4v2m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                            </svg>
+                                        </div>
+
+                                        <div class="min-w-0">
+                                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                                Your privacy matters
+                                            </h3>
+
+                                            <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                                                The information and documents you provide may be used by the
+                                                rental business for booking verification, identity validation,
+                                                rental processing, fraud prevention, and other legitimate
+                                                purposes related to your rental transaction.
+                                            </p>
+
+                                            <button
+                                                type="button"
+                                                @click="showPolicy = true"
+                                                class="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                            >
+                                                Read Privacy Notice
+
+                                                <svg
+                                                    class="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Acknowledgment --}}
+                                <label
+                                    class="flex items-start gap-3 p-4 transition border rounded-xl cursor-pointer
+                                        border-gray-200 bg-white hover:border-blue-300
+                                        dark:border-gray-700 dark:bg-gray-900 dark:hover:border-blue-700"
+                                >
                                     <input
                                         type="checkbox"
                                         wire:model.live="agreeToPrivacy"
-                                        class="mt-1 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded
+                                            focus:ring-blue-500
+                                            dark:border-gray-600 dark:bg-gray-800
+                                            dark:focus:ring-blue-500"
                                     />
-                                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                                        I agree to the
-                                        <button type="button" @click="showPolicy = true" class="text-blue-600 hover:underline">
-                                            Privacy Policy
-                                        </button>.
+
+                                    <span class="text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                        I acknowledge that I have read and understood the
+
+                                        <button
+                                            type="button"
+                                            @click.prevent.stop="showPolicy = true"
+                                            class="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                                        >
+                                            Privacy Notice
+                                        </button>
+
+                                        regarding the collection and processing of the personal information
+                                        and documents I provide for this rental transaction.
                                     </span>
                                 </label>
-                                
+
                                 @error('agreeToPrivacy')
-                                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                                    <p class="mt-2 text-sm text-red-500">
+                                        {{ $message }}
+                                    </p>
                                 @enderror
 
-                                <div 
-                                    x-show="showPolicy" 
-                                    x-transition 
-                                    x-cloak 
-                                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                                {{-- Modal --}}
+                                <div
+                                    x-show="showPolicy"
+                                    x-transition.opacity
+                                    x-cloak
+                                    @keydown.escape.window="showPolicy = false"
+                                    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                                 >
-                                    <div @click.away="showPolicy = false"
-                                        class="w-full max-w-2xl p-6 bg-white rounded-lg shadow-lg dark:bg-gray-800">
-                                        <h3 class="mb-2 text-lg font-semibold text-gray-800 dark:text-white">
-                                            Privacy Policy
-                                        </h3>
-                                        <div class="overflow-y-auto max-h-[60vh] text-sm text-gray-700 dark:text-gray-300 space-y-3">
+                                    <div
+                                        @click.self="showPolicy = false"
+                                        class="absolute inset-0"
+                                    ></div>
+
+                                    <div
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-labelledby="privacy-notice-title"
+                                        class="relative z-10 flex flex-col w-full max-w-3xl overflow-hidden bg-white border border-gray-200 shadow-2xl rounded-2xl dark:border-white/10 dark:bg-gray-900 max-h-[90vh]"
+                                    >
+                                        {{-- Modal Header --}}
+                                        <div
+                                            class="flex items-center justify-between gap-4 px-6 py-5 border-b border-gray-100 dark:border-white/10"
+                                        >
+                                            <div>
+                                                <p
+                                                    class="text-xs font-semibold tracking-wider text-blue-600 uppercase dark:text-blue-400"
+                                                >
+                                                    Rental Data Privacy
+                                                </p>
+
+                                                <h3
+                                                    id="privacy-notice-title"
+                                                    class="mt-1 text-lg font-semibold text-gray-900 dark:text-white"
+                                                >
+                                                    Privacy Notice
+                                                </h3>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                @click="showPolicy = false"
+                                                class="flex items-center justify-center flex-shrink-0 w-10 h-10 text-gray-500 transition rounded-xl hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white"
+                                                aria-label="Close Privacy Notice"
+                                            >
+                                                <svg
+                                                    class="w-5 h-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        {{-- Modal Content --}}
+                                        <div
+                                            class="flex-1 px-6 py-5 overflow-y-auto overscroll-contain"
+                                        >
                                             <x-booking-form-policy />
                                         </div>
-                                        <div class="flex justify-end mt-6">
-                                            <button type="button" @click="showPolicy = false"
-                                                    class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+
+                                        {{-- Modal Footer --}}
+                                        <div
+                                            class="flex flex-col gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-gray-950 sm:flex-row sm:items-center sm:justify-between"
+                                        >
+                                            <a
+                                                href="{{ route('privacy-policy') }}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="text-sm font-medium text-gray-500 transition hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
+                                            >
+                                                View full KeyFleet Privacy Policy
+                                            </a>
+
+                                            <button
+                                                type="button"
+                                                @click="showPolicy = false"
+                                                class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white transition bg-blue-600 rounded-xl hover:bg-blue-700 active:scale-95 dark:bg-blue-600 dark:hover:bg-blue-500"
+                                            >
                                                 I Understand
                                             </button>
                                         </div>

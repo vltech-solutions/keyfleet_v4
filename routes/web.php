@@ -12,6 +12,7 @@ use App\Livewire\CustomerPortal\Dashboard;
 use App\Livewire\CustomerPortal\Reservations;
 use App\Livewire\PartnerReport;
 use App\Livewire\TenantRegister;
+use App\Models\AgentProgram;
 use App\Models\Booking;
 use App\Models\Company;
 use App\Models\Contract;
@@ -86,6 +87,25 @@ Route::get('/testimonials', function () {
     $testimonials = Testimonial::latest()->get();
     return view('testimonials', compact('testimonials'));
 })->name('testimonials');
+
+Route::get('/become-an-agent', function () {
+    $program = AgentProgram::query()
+        ->where('is_active', true)
+        ->where(function ($query) {
+            $query
+                ->whereNull('starts_at')
+                ->orWhere('starts_at', '<=', now());
+        })
+        ->where(function ($query) {
+            $query
+                ->whereNull('ends_at')
+                ->orWhere('ends_at', '>=', now());
+        })
+        ->latest('id')
+        ->first();
+
+    return view('become-an-agent', compact('program'));
+})->name('become-agent');
 
 // Blog System
 Route::prefix('blog')->name('blog.')->group(function () {

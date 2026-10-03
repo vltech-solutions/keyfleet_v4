@@ -117,30 +117,96 @@
 
 
             {{-- Booking Summary --}}
-            <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 xl:col-span-7">
-                <div class="border-b border-gray-100 px-6 py-5 dark:border-white/5">
-                    <h2 class="font-semibold text-gray-950 dark:text-white">Booking Summary</h2>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Current rental activity at a glance.</p>
+            <div class="xl:col-span-7">
+                <div class="mb-4">
+                    <h2 class="font-semibold text-gray-950 dark:text-white">
+                        Booking Summary
+                    </h2>
+
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Current rental activity at a glance.
+                    </p>
                 </div>
 
-                <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-white/5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     @foreach($bookingItems as $item)
-                        <div class="px-6 py-5">
-                            <div class="flex items-center gap-2">
-                                <span class="h-2 w-2 rounded-full {{ $item['dot'] }}"></span>
-                                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ $item['label'] }}</span>
+                        @php
+                            $icon = match ($item['label']) {
+                                'Upcoming' => 'heroicon-o-calendar-days',
+                                'On Trip' => 'heroicon-o-truck',
+                                'Completed' => 'heroicon-o-check-circle',
+                                default => 'heroicon-o-chart-bar',
+                            };
+
+                            $iconStyle = match ($item['label']) {
+                                'Upcoming' => 'bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400',
+                                'On Trip' => 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+                                'Completed' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+                                default => 'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400',
+                            };
+
+                            $hoverStyle = match ($item['label']) {
+                                'Upcoming' => 'hover:border-primary-200 dark:hover:border-primary-500/30',
+                                'On Trip' => 'hover:border-amber-200 dark:hover:border-amber-500/30',
+                                'Completed' => 'hover:border-emerald-200 dark:hover:border-emerald-500/30',
+                                default => 'hover:border-gray-300 dark:hover:border-white/20',
+                            };
+                        @endphp
+
+                        <div
+                            class="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-sm
+                                transition duration-200 hover:-translate-y-0.5 hover:shadow-lg
+                                dark:border-white/10 dark:bg-gray-900
+                                {{ $hoverStyle }}"
+                        >
+                            {{-- Subtle Accent --}}
+                            <div
+                                class="absolute inset-x-0 top-0 h-0.5 {{ $item['dot'] }}"
+                            ></div>
+
+                            {{-- Label + Icon --}}
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <span
+                                        class="h-2.5 w-2.5 shrink-0 rounded-full {{ $item['dot'] }}"
+                                    ></span>
+
+                                    <p class="truncate text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                        {{ $item['label'] }}
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl
+                                        {{ $iconStyle }}"
+                                >
+                                    <x-filament::icon
+                                        :icon="$icon"
+                                        class="h-5 w-5"
+                                    />
+                                </div>
                             </div>
 
-                            <div class="mt-3 flex items-baseline gap-2">
-                                <span class="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white">
-                                    {{ number_format($item['count']) }}
-                                </span>
-                                <span class="text-xs text-gray-400">{{ $item['hint'] }}</span>
+                            {{-- Main Value --}}
+                            <div class="mt-5">
+                                <div class="flex items-end gap-2">
+                                    <p class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                                        {{ number_format($item['count']) }}
+                                    </p>
+
+                                    <span class="mb-1 text-xs text-gray-400">
+                                        {{ $item['hint'] }}
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="mt-6">
-                                <p class="text-[11px] text-gray-400">{{ $item['balanceLabel'] }}</p>
-                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                            {{-- Balance --}}
+                            <div class="mt-6 border-t border-gray-100 pt-4 dark:border-white/5">
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                                    {{ $item['balanceLabel'] }}
+                                </p>
+
+                                <p class="mt-1.5 text-sm font-semibold text-gray-900 dark:text-white">
                                     ₱{{ number_format($item['balance'], 2) }}
                                 </p>
                             </div>
