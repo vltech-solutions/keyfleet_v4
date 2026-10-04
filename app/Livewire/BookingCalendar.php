@@ -15,13 +15,17 @@ use Omnia\LivewireCalendar\LivewireCalendar;
 class BookingCalendar extends LivewireCalendar
 {
     public ?int $carId = null;
+
     public ?int $sourceId = null;
 
     public string $status = '';
+
     public string $viewMode = 'visual';
+
     public string $calendarScope = 'month';
 
     public ?string $selectedDate = null;
+
     public ?int $selectedBookingId = null;
 
     public bool $showDayPanel = false;
@@ -29,7 +33,9 @@ class BookingCalendar extends LivewireCalendar
     public string $calendarFeedUrl = '';
 
     public array $carOptions = [];
+
     public array $sourceOptions = [];
+
     public array $statusOptions = [];
 
     public function mount(
@@ -85,7 +91,16 @@ class BookingCalendar extends LivewireCalendar
             ->where('company_id', $company->id)
             ->whereNull('deleted_at')
             ->orderBy('name')
-            ->pluck('name', 'id')
+            ->get(['id', 'name', 'brand', 'model', 'plate_number'])
+            ->map(fn (Car $car): array => [
+                'value' => (string) $car->id,
+                'label' => $car->name,
+                'description' => collect([
+                    trim(($car->brand ?? '').' '.($car->model ?? '')),
+                    $car->plate_number,
+                ])->filter()->implode(' - '),
+            ])
+            ->values()
             ->all();
 
         $this->sourceOptions = Source::query()
@@ -152,6 +167,10 @@ class BookingCalendar extends LivewireCalendar
             config('app.timezone')
         )->toDateString();
 
+        if ($scope !== 'month') {
+            $this->syncCalendarMonth(Carbon::parse($this->selectedDate, config('app.timezone')));
+        }
+
         $this->showDayPanel = $scope === 'day';
     }
 
@@ -162,6 +181,69 @@ class BookingCalendar extends LivewireCalendar
             'sourceId',
             'status'
         );
+    }
+
+    public function goToPreviousPeriod(): void
+    {
+        $this->moveCalendarPeriod(-1);
+    }
+
+    public function goToNextPeriod(): void
+    {
+        $this->moveCalendarPeriod(1);
+    }
+
+    public function goToToday(): void
+    {
+        parent::goToCurrentMonth();
+
+        $this->selectedDate = now(
+            config('app.timezone')
+        )->toDateString();
+        $this->selectedBookingId = null;
+        $this->showDayPanel = $this->calendarScope === 'day';
+    }
+
+    private function moveCalendarPeriod(int $direction): void
+    {
+        if ($this->calendarScope === 'month') {
+            if ($direction < 0) {
+                $this->goToPreviousMonth();
+            } else {
+                $this->goToNextMonth();
+            }
+
+            return;
+        }
+
+        $date = Carbon::parse(
+            $this->selectedDate ?: $this->startsAt->toDateString(),
+            config('app.timezone')
+        );
+
+        if ($this->calendarScope === 'week') {
+            $date->addDays(7 * $direction);
+        } else {
+            $date->addDays($direction);
+        }
+
+        $this->selectedDate = $date->toDateString();
+        $this->selectedBookingId = null;
+        $this->showDayPanel = $this->calendarScope === 'day';
+
+        $this->syncCalendarMonth($date);
+    }
+
+    private function syncCalendarMonth(Carbon $date): void
+    {
+        if ($this->startsAt->format('Y-m') === $date->format('Y-m')) {
+            return;
+        }
+
+        $this->startsAt = $date->copy()->startOfMonth()->startOfDay();
+        $this->endsAt = $date->copy()->endOfMonth()->startOfDay();
+
+        $this->calculateGridStartsEnds();
     }
 
     public function goToNextMonth()

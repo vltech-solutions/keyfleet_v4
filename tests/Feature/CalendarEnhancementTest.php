@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\BookingCalendar;
 use App\Models\Company;
 use App\Models\Permission;
 use App\Models\Role;
@@ -73,6 +74,39 @@ class CalendarEnhancementTest extends TestCase
 
         $user->forceFill(['calendar_feed_token_hash' => hash('sha256', $token), 'is_active' => false])->saveQuietly();
         $this->get($url)->assertNotFound();
+    }
+
+    public function test_period_navigation_moves_by_active_scope_across_month_boundaries(): void
+    {
+        $component = new BookingCalendar;
+        $component->weekStartsAt = Carbon::SUNDAY;
+        $component->weekEndsAt = Carbon::SATURDAY;
+        $component->startsAt = Carbon::parse('2026-10-01');
+        $component->endsAt = Carbon::parse('2026-10-31');
+        $component->calculateGridStartsEnds();
+
+        $component->calendarScope = 'week';
+        $component->selectedDate = '2026-10-25';
+        $component->goToNextPeriod();
+
+        $this->assertSame('2026-11-01', $component->selectedDate);
+        $this->assertSame('2026-11-01', $component->startsAt->toDateString());
+        $this->assertTrue(Carbon::parse($component->selectedDate)->betweenIncluded(
+            $component->gridStartsAt,
+            $component->gridEndsAt,
+        ));
+
+        $component->calendarScope = 'day';
+        $component->goToPreviousPeriod();
+
+        $this->assertSame('2026-10-31', $component->selectedDate);
+        $this->assertSame('2026-10-01', $component->startsAt->toDateString());
+
+        $component->calendarScope = 'month';
+        $component->goToNextPeriod();
+
+        $this->assertSame('2026-11-01', $component->selectedDate);
+        $this->assertSame('2026-11-01', $component->startsAt->toDateString());
     }
 
     private function tenantUser(): array

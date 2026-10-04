@@ -1,8 +1,8 @@
 @php
-    $anchor = $startsAt->copy()->startOfWeek(0);
+    $anchor = $startsAt->copy()->startOfWeek((int) $weekStartsAt);
     if ($selectedDate) {
         [$selectedYear, $selectedMonth, $selectedDay] = array_map('intval', explode('-', $selectedDate));
-        $anchor->setDate($selectedYear, $selectedMonth, $selectedDay)->startOfWeek(0);
+        $anchor->setDate($selectedYear, $selectedMonth, $selectedDay)->startOfWeek((int) $weekStartsAt);
     }
     $weekDays = collect(range(0, 6))->map(fn ($offset) => $anchor->copy()->addDays($offset));
 @endphp

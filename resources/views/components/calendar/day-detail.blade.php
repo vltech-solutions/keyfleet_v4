@@ -15,7 +15,10 @@
                 @foreach($statusSummary as $summaryStatus=>$count)<span class="rounded-full bg-primary-50 px-2.5 py-1 font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ $count }} {{ ucfirst($summaryStatus) }}</span>@endforeach
             </div>
         </div>
-        @if($panelMode)<button type="button" wire:click="closeDayPanel" class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Close day details">X</button>@endif
+        @if($panelMode)<button type="button" wire:click="closeDayPanel" class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10" aria-label="Close day details"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+</svg>
+</button>@endif
     </div>
     <div class="space-y-3">
         @forelse($dayEvents as $event)
@@ -37,7 +40,6 @@
                     </div>
                 </div>
                 <div class="mt-3 flex justify-end gap-2">
-                    <a href="{{ route('calendar.booking.ics',$event['id']) }}" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-bold text-gray-700 dark:border-white/10 dark:text-gray-200">Download .ics</a>
                     <a href="{{ $bookingEditBaseUrl.'/'.$event['id'].'/edit' }}" class="rounded-lg bg-primary-600 px-3 py-2 text-xs font-bold text-white">View Booking</a>
                 </div>
             </article>
