@@ -2,20 +2,35 @@
 
 namespace App\Livewire;
 
-use Omnia\LivewireCalendar\LivewireCalendar;
-use Livewire\Component;
+use App\Filament\Resources\BookingResource;
+use App\Models\Car;
+use App\Models\Source;
+use App\Services\CalendarDataService;
+use Filament\Facades\Filament;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use App\Models\Booking;
-use App\Filament\Resources\BookingResource;
-use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Omnia\LivewireCalendar\LivewireCalendar;
 
 class BookingCalendar extends LivewireCalendar
 {
     public ?int $carId = null;
+    public ?int $sourceId = null;
 
-    public $monthGrid;
+    public string $status = '';
+    public string $viewMode = 'visual';
+    public string $calendarScope = 'month';
+
+    public ?string $selectedDate = null;
+    public ?int $selectedBookingId = null;
+
+    public bool $showDayPanel = false;
+
+    public string $calendarFeedUrl = '';
+
+    public array $carOptions = [];
+    public array $sourceOptions = [];
+    public array $statusOptions = [];
 
     public function mount(
         $initialYear = null,
@@ -48,149 +63,210 @@ class BookingCalendar extends LivewireCalendar
             $afterCalendarView,
             $pollMillis,
             $pollAction,
-            $dragAndDropEnabled,
-            $dayClickEnabled,
-            $eventClickEnabled,
+            false,
+            true,
+            true,
             $extras
         );
 
-        // Initialize your monthGrid if needed
-        $this->monthGrid = $this->generateMonthGrid($this->startsAt);
+        $this->calendarView = 'livewire.enhanced-booking-calendar';
+
+        $company = Filament::getTenant();
+
+        abort_unless(
+            $company &&
+            (int) $company->id === (int) auth()->user()?->company_id,
+            403
+        );
+
+        $this->viewMode = session('calendar.view_mode', 'visual');
+
+        $this->carOptions = Car::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+
+        $this->sourceOptions = Source::query()
+            ->where('company_id', $company->id)
+            ->orderBy('source')
+            ->pluck('source', 'id')
+            ->all();
+
+        $this->statusOptions = app(CalendarDataService::class)
+            ->statuses($company)
+            ->all();
     }
-
-
-    protected function generateMonthGrid($startsAt)
-    {
-        $startOfMonth = $startsAt->copy()->startOfMonth();
-        $endOfMonth = $startsAt->copy()->endOfMonth();
-        
-        $grid = collect();
-        $week = [];
-
-        // Force start of week to Sunday (0) and end to Saturday (6)
-        $firstDayOfGrid = $startOfMonth->copy()->startOfWeek(Carbon::SUNDAY);
-        $lastDayOfGrid = $endOfMonth->copy()->endOfWeek(Carbon::SATURDAY);
-
-        for ($date = $firstDayOfGrid; $date->lte($lastDayOfGrid); $date->addDay()) {
-            $week[] = $date->copy();
-            
-            // Kapag Saturday na, itong week na ito ay tapos na.
-            if ($date->isSaturday()) {
-                $grid->push($week);
-                $week = [];
-            }
-        }
-
-        return $grid;
-    }
-
 
     public function events(): Collection
     {
-        $cacheKey = "events_for_car_" . Filament::getTenant()->id;
+        $company = Filament::getTenant();
 
-        $cached = Cache::get($cacheKey);
+        abort_unless($company, 403);
 
-        if ($cached) {
-            $collection = collect($cached);
+        $from = Carbon::instance(
+            $this->gridStartsAt->copy()
+        );
 
-            if ($this->carId) {
-                $collection = $collection->where('car_id', $this->carId);
-            }
+        $to = Carbon::instance(
+            $this->gridEndsAt->copy()
+        );
 
-            return $collection;
-        }
+        return app(CalendarDataService::class)->events(
+            $company,
+            $from,
+            $to,
+            [
+                'car_id' => $this->carId,
+                'source_id' => $this->sourceId,
+                'status' => $this->status,
+            ],
+        );
+    }
 
-        $query = Booking::query()->where('status','approved');
-        if ($this->carId) {
-            $query->where('car_id', $this->carId);
-        }
+    public function setViewMode(string $mode): void
+    {
+        abort_unless(
+            in_array($mode, ['visual', 'operations'], true),
+            422
+        );
 
-        $fresh = $query->with('car')->get()->flatMap(function (Booking $model) {
-            if ($model->car?->deleted_at !== null) {
-                return collect(); 
-            }
+        $this->viewMode = $mode;
 
-            $start = Carbon::parse($model->start_datetime)->startOfDay();
-            $end = Carbon::parse($model->end_datetime)->startOfDay();
-            $dates = collect();
+        session([
+            'calendar.view_mode' => $mode,
+        ]);
+    }
 
-            while ($start->lte($end)) {
-                $dates->push([
-                    'id' => $model->id,
-                    'image' => $model->car->image,
-                    'car_name' => $model->car->name,
-                    'renter_name' => $model->renter_name,
-                    'car_id' => $model->car_id,
-                    'date' => $start->copy(),
-                ]);
-                $start->addDay();
-            }
+    public function setCalendarScope(string $scope): void
+    {
+        abort_unless(
+            in_array($scope, ['month', 'week', 'day'], true),
+            422
+        );
 
-            return $dates;
-        });
+        $this->calendarScope = $scope;
 
-        Cache::put($cacheKey, $fresh, now()->addMinutes(10));
+        $this->selectedDate ??= now(
+            config('app.timezone')
+        )->toDateString();
 
-        return $fresh;
+        $this->showDayPanel = $scope === 'day';
+    }
+
+    public function clearFilters(): void
+    {
+        $this->reset(
+            'carId',
+            'sourceId',
+            'status'
+        );
     }
 
     public function goToNextMonth()
     {
-        $this->startsAt = $this->startsAt->copy()->addMonth()->startOfMonth();
-        $this->monthGrid = $this->generateMonthGrid($this->startsAt);
+        parent::goToNextMonth();
+
+        $this->selectedDate = $this->startsAt->toDateString();
     }
 
     public function goToPreviousMonth()
     {
-        $this->startsAt = $this->startsAt->copy()->subMonth()->startOfMonth();
-        $this->monthGrid = $this->generateMonthGrid($this->startsAt);
+        parent::goToPreviousMonth();
+
+        $this->selectedDate = $this->startsAt->toDateString();
     }
 
-    // public function goToNextMonth()
-    // {
-    //     $this->startsAt = $this->startsAt->copy()->addMonth()->startOfMonth();
-
-    //     $startOfMonth = $this->startsAt->copy()->startOfMonth();
-    //     $endOfMonth = $this->startsAt->copy()->endOfMonth();
-    //     $grid = collect();
-    //     $week = [];
-
-    //     for ($date = $startOfMonth->startOfWeek(); $date->lte($endOfMonth->endOfWeek()); $date->addDay()) {
-    //         $week[] = $date->copy();
-    //         if ($date->isSunday()) {
-    //             $grid->push($week);
-    //             $week = [];
-    //         }
-    //     }
-
-    //     $this->monthGrid = $grid;
-
-    // }
-
-    // public function goToPreviousMonth()
-    // {
-    //     $this->startsAt = $this->startsAt->copy()->subMonth()->startOfMonth();
-
-    //      $startOfMonth = $this->startsAt->copy()->startOfMonth();
-    //     $endOfMonth = $this->startsAt->copy()->endOfMonth();
-    //     $grid = collect();
-    //     $week = [];
-
-    //     for ($date = $startOfMonth->startOfWeek(); $date->lte($endOfMonth->endOfWeek()); $date->addDay()) {
-    //         $week[] = $date->copy();
-    //         if ($date->isSunday()) {
-    //             $grid->push($week);
-    //             $week = [];
-    //         }
-    //     }
-
-    //     $this->monthGrid = $grid;
-    // }
-
-    public function onEventClick($booking)
+    public function goToCurrentMonth()
     {
-        return $this->redirect(BookingResource::getUrl('edit', ['record' => $booking]));
+        parent::goToCurrentMonth();
+
+        $this->selectedDate = now(
+            config('app.timezone')
+        )->toDateString();
     }
 
+    public function onDayClick($year, $month, $day)
+    {
+        $this->selectedDate = Carbon::create(
+            $year,
+            $month,
+            $day,
+            0,
+            0,
+            0,
+            config('app.timezone')
+        )->toDateString();
+
+        $this->selectedBookingId = null;
+        $this->showDayPanel = true;
+    }
+
+    public function onEventClick($eventId, ?string $date = null)
+    {
+        $this->selectedBookingId = (int) $eventId;
+
+        $this->selectedDate = $date ?: $this->selectedDate;
+
+        $this->showDayPanel = true;
+    }
+
+    public function closeDayPanel(): void
+    {
+        $this->showDayPanel = false;
+        $this->selectedBookingId = null;
+    }
+
+    public function generateCalendarFeed(): void
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user?->hasPermission('calendar.view'),
+            403
+        );
+
+        $token = Str::random(64);
+
+        $user->forceFill([
+            'calendar_feed_token_hash' => hash('sha256', $token),
+            'calendar_feed_token_generated_at' => now(),
+        ])->saveQuietly();
+
+        $this->calendarFeedUrl = route(
+            'calendar.feed',
+            [
+                'user' => $user->id,
+                'token' => $token,
+            ]
+        );
+    }
+
+    public function revokeCalendarFeed(): void
+    {
+        $user = auth()->user();
+
+        abort_unless($user, 403);
+
+        $user->forceFill([
+            'calendar_feed_token_hash' => null,
+            'calendar_feed_token_generated_at' => null,
+        ])->saveQuietly();
+
+        $this->calendarFeedUrl = '';
+    }
+
+    public function render()
+    {
+        $company = Filament::getTenant();
+
+        abort_unless($company, 403);
+
+        return parent::render()->with([
+            'company' => $company,
+            'bookingEditBaseUrl' => BookingResource::getUrl('index'),
+            'newBookingUrl' => BookingResource::getUrl('create'),
+        ]);
+    }
 }

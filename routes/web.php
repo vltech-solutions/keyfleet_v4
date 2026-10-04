@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\CalendarExportController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerLoginController;
 use App\Http\Controllers\InspectionReportController;
@@ -186,6 +187,15 @@ Route::prefix('{tenant}')->group(function () {
 Route::get('/partner/report/{token}', PartnerReport::class)
     ->name('partner.report')
     ->middleware('web');
+
+Route::get('/calendar/feed/{user}/{token}.ics', [CalendarExportController::class, 'feed'])
+    ->where('token', '[A-Za-z0-9_-]{40,}')
+    ->middleware('throttle:calendar-feed')
+    ->name('calendar.feed');
+
+Route::get('/calendar/bookings/{booking}.ics', [CalendarExportController::class, 'booking'])
+    ->middleware(['auth', 'permission:calendar.view'])
+    ->name('calendar.booking.ics');
 
 /*
 |--------------------------------------------------------------------------

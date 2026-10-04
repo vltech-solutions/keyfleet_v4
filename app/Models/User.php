@@ -45,6 +45,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     protected $hidden = [
         'password',
         'remember_token',
+        'calendar_feed_token_hash',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
             'is_admin' => 'boolean',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'calendar_feed_token_generated_at' => 'datetime',
         ];
     }
 
