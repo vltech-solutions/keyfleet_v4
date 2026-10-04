@@ -89,12 +89,18 @@ class AgentPayoutResource extends Resource
         return AgentCommission::query()
             ->with('company')
             ->where('agent_id', $agentId)
-            ->where('status', AgentCommission::STATUS_PAYABLE)
+            ->where(function ($query): void {
+                $query->where('status', AgentCommission::STATUS_PAYABLE)
+                    ->orWhere(function ($query): void {
+                        $query->where('status', AgentCommission::STATUS_PARTIALLY_REVERSED)
+                            ->where('payable_at', '<=', now());
+                    });
+            })
             ->whereDoesntHave('payoutItem')
             ->orderBy('earned_at')
             ->get()
             ->mapWithKeys(fn (AgentCommission $commission): array => [
-                $commission->id => $commission->company->name.' — SUB-'.$commission->subscription_id.' — ₱'.number_format((float) $commission->commission_amount, 2),
+                $commission->id => $commission->company->name.' — SUB-'.$commission->subscription_id.' — ₱'.number_format((float) $commission->netCommissionAmount(), 2),
             ])
             ->all();
     }

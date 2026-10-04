@@ -147,8 +147,126 @@ class AgentProgramTest extends TestCase
         app(AgentCommissionService::class)->createForSubscription($upgrade);
         $this->assertTrue($referral->fresh()->commission_started_at->equalTo($started));
 
-        [, $outside] = $this->companyWithSubscription(900, $started->copy()->addMonths(2), 0, $company);
+        [, $outside] = $this->companyWithSubscription(900, $started->copy()->addMonths(2), 0, $company, [
+            'starts_at' => $started->copy()->addMonths(2),
+            'ends_at' => $started->copy()->addMonths(3),
+        ]);
         $this->assertNull(app(AgentCommissionService::class)->createForSubscription($outside));
+    }
+
+    public function test_annual_payment_fully_inside_window_uses_the_full_actual_base_amount(): void
+    {
+        [, $company] = $this->agentReferral(rate: '8.5000', months: 12);
+        $start = now()->startOfDay();
+        [, $payment] = $this->companyWithSubscription(9600, $start, 0, $company, [
+            'starts_at' => $start,
+            'ends_at' => $start->copy()->addYear(),
+        ]);
+
+        $commission = app(AgentCommissionService::class)->createForSubscription($payment);
+
+        $this->assertSame('9600.00', $commission->actual_base_subscription_amount);
+        $this->assertSame('9600.00', $commission->commissionable_amount);
+        $this->assertSame('816.00', $commission->commission_amount);
+        $this->assertSame($commission->total_coverage_days, $commission->eligible_coverage_days);
+    }
+
+    public function test_three_and_six_month_payments_fully_inside_window_use_the_full_base_amount(): void
+    {
+        foreach ([3, 6] as $months) {
+            [, $company] = $this->agentReferral(
+                rate: '10.0000',
+                months: 12,
+                code: 'KF-'.$months.'MONTHS',
+            );
+            $start = now()->startOfDay();
+            $amount = $months * 1000;
+            [, $payment] = $this->companyWithSubscription($amount, $start, 0, $company, [
+                'starts_at' => $start,
+                'ends_at' => $start->copy()->addMonths($months),
+            ]);
+
+            $commission = app(AgentCommissionService::class)->createForSubscription($payment);
+
+            $this->assertSame(number_format($amount, 2, '.', ''), $commission->commissionable_amount);
+            $this->assertSame(number_format($amount * 0.10, 2, '.', ''), $commission->commission_amount);
+        }
+    }
+
+    public function test_long_term_payment_crossing_window_is_prorated_by_exact_coverage_days(): void
+    {
+        [, $company, $referral] = $this->agentReferral(rate: '10.0000', months: 12);
+        $windowStart = now()->startOfDay()->subMonths(6);
+        $referral->update(['referred_at' => $windowStart->copy()->subDay()]);
+        [, $firstPayment] = $this->companyWithSubscription(100, $windowStart, 0, $company, [
+            'starts_at' => $windowStart,
+            'ends_at' => $windowStart->copy()->addMonth(),
+        ]);
+        app(AgentCommissionService::class)->createForSubscription($firstPayment);
+
+        $coverageStart = $windowStart->copy()->addMonths(6);
+        $coverageEnd = $coverageStart->copy()->addYear();
+        [, $annualPayment] = $this->companyWithSubscription(12000, $coverageStart, 0, $company, [
+            'starts_at' => $coverageStart,
+            'ends_at' => $coverageEnd,
+        ]);
+
+        $commission = app(AgentCommissionService::class)->createForSubscription($annualPayment);
+        $eligibilityEnd = $referral->fresh()->commission_ends_at->startOfDay();
+        $totalDays = (int) $coverageStart->diffInDays($coverageEnd);
+        $eligibleDays = (int) $coverageStart->diffInDays($eligibilityEnd);
+        $expectedBaseCents = intdiv((1200000 * $eligibleDays) + intdiv($totalDays, 2), $totalDays);
+        $this->assertSame($totalDays, $commission->total_coverage_days);
+        $this->assertSame($eligibleDays, $commission->eligible_coverage_days);
+        $this->assertSame(sprintf('%d.%02d', intdiv($expectedBaseCents, 100), $expectedBaseCents % 100), $commission->commissionable_amount);
+        $this->assertSame($eligibilityEnd->toDateString(), $commission->eligible_coverage_end->toDateString());
+        $this->assertLessThan((float) $commission->actual_base_subscription_amount, (float) $commission->commissionable_amount);
+    }
+
+    public function test_partial_refund_records_a_proportional_reversal_without_deleting_original_commission(): void
+    {
+        [, $company] = $this->agentReferral(rate: '10.0000');
+        [, $payment] = $this->companyWithSubscription(1000, now(), 0, $company);
+        $commission = app(AgentCommissionService::class)->createForSubscription($payment);
+
+        $payment->update(['refund_amount' => 500]);
+        $commission->refresh();
+
+        $this->assertSame(AgentCommission::STATUS_PARTIALLY_REVERSED, $commission->status);
+        $this->assertSame('1000.00', $commission->commissionable_amount);
+        $this->assertSame('100.00', $commission->commission_amount);
+        $this->assertSame('500.00', $commission->reversed_base_amount);
+        $this->assertSame('50.00', $commission->reversed_amount);
+        $this->assertSame('50.00', $commission->netCommissionAmount());
+        $this->assertDatabaseHas('agent_commissions', ['id' => $commission->id]);
+    }
+
+    public function test_program_must_be_available_when_a_new_commission_is_generated(): void
+    {
+        [$agent, $company] = $this->agentReferral();
+        $agent->program->update(['is_active' => false]);
+        [, $payment] = $this->companyWithSubscription(500, now(), 0, $company);
+
+        $this->assertNull(app(AgentCommissionService::class)->createForSubscription($payment));
+        $this->assertDatabaseCount('agent_commissions', 0);
+    }
+
+    public function test_program_start_and_end_dates_are_respected_for_new_commissions(): void
+    {
+        [$futureAgent, $futureCompany] = $this->agentReferral(code: 'KF-FUTURE');
+        $futureAgent->program->update(['starts_at' => now()->addDay()]);
+        [, $futurePayment] = $this->companyWithSubscription(500, now(), 0, $futureCompany);
+        $this->assertNull(app(AgentCommissionService::class)->createForSubscription($futurePayment));
+
+        [$expiredAgent, $expiredCompany] = $this->agentReferral(code: 'KF-EXPIRED');
+        $expiredAgent->program->update(['ends_at' => now()->subDay()]);
+        [, $expiredPayment] = $this->companyWithSubscription(500, now(), 0, $expiredCompany);
+        $this->assertNull(app(AgentCommissionService::class)->createForSubscription($expiredPayment));
+
+        [$validAgent, $validCompany] = $this->agentReferral(code: 'KF-VALID');
+        $validAgent->program->update(['starts_at' => now()->subDay(), 'ends_at' => now()->addDay()]);
+        [, $validPayment] = $this->companyWithSubscription(500, now(), 0, $validCompany);
+        $this->assertNotNull(app(AgentCommissionService::class)->createForSubscription($validPayment));
     }
 
     public function test_program_changes_do_not_mutate_historical_snapshots(): void

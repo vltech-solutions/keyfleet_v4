@@ -2,11 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Agent\Pages\ChangePassword;
 use App\Filament\Agent\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\UserMenuItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -37,6 +39,12 @@ class AgentPanelProvider extends PanelProvider
                 AuthenticateSession::class, ShareErrorsFromSession::class, VerifyCsrfToken::class,
                 SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class]);
+            ->authMiddleware([Authenticate::class])
+            ->userMenuItems([
+                UserMenuItem::make()
+                    ->label('Change Password')
+                    ->url(fn (): string => ChangePassword::getUrl())
+                    ->icon('heroicon-o-key'),
+            ]);
     }
 }

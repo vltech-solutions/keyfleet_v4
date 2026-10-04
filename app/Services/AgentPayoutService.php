@@ -25,7 +25,7 @@ class AgentPayoutService
                 throw ValidationException::withMessages(['commissions' => 'Select valid commissions owned by this agent.']);
             }
 
-            if ($commissions->contains(fn (AgentCommission $item) => $item->status !== AgentCommission::STATUS_PAYABLE || $item->payoutItem()->exists())) {
+            if ($commissions->contains(fn (AgentCommission $item) => ! $this->isPayable($item) || $item->payoutItem()->exists())) {
                 throw ValidationException::withMessages(['commissions' => 'Only unassigned payable commissions may enter a payout.']);
             }
 
@@ -54,7 +54,7 @@ class AgentPayoutService
             }
 
             $commissions = $payout->commissions()->lockForUpdate()->get();
-            if ($commissions->isEmpty() || $commissions->contains(fn ($item) => $item->status !== AgentCommission::STATUS_PAYABLE)) {
+            if ($commissions->isEmpty() || $commissions->contains(fn ($item) => ! $this->isPayable($item))) {
                 throw ValidationException::withMessages(['commissions' => 'Every payout item must still be payable.']);
             }
 
@@ -69,11 +69,17 @@ class AgentPayoutService
     private function sum(Collection $commissions): string
     {
         $cents = $commissions->sum(function ($item): int {
-            [$whole, $fraction] = array_pad(explode('.', (string) $item->commission_amount, 2), 2, '');
+            [$whole, $fraction] = array_pad(explode('.', $item->netCommissionAmount(), 2), 2, '');
 
             return ((int) $whole * 100) + (int) substr(str_pad($fraction, 2, '0'), 0, 2);
         });
 
         return sprintf('%d.%02d', intdiv($cents, 100), $cents % 100);
+    }
+
+    private function isPayable(AgentCommission $commission): bool
+    {
+        return $commission->status === AgentCommission::STATUS_PAYABLE
+            || ($commission->status === AgentCommission::STATUS_PARTIALLY_REVERSED && $commission->payable_at->isPast());
     }
 }

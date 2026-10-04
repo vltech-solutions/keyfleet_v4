@@ -36,7 +36,7 @@ class AgentCommissionResource extends Resource
             ])->action(function (AgentCommission $record, array $data): void {
                 app(AgentCommissionService::class)->reverse($record, $data['reason']);
                 activity()->performedOn($record)->causedBy(auth()->user())->withProperties(['reason' => $data['reason']])->log('Agent commission reversed');
-            })->visible(fn (AgentCommission $record) => in_array($record->status, [AgentCommission::STATUS_PENDING, AgentCommission::STATUS_PAYABLE], true)),
+            })->visible(fn (AgentCommission $record) => in_array($record->status, [AgentCommission::STATUS_PENDING, AgentCommission::STATUS_PAYABLE, AgentCommission::STATUS_PARTIALLY_REVERSED], true)),
             Tables\Actions\ViewAction::make(),
         ])->bulkActions([]);
     }
